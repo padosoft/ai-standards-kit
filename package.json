@@ -1,0 +1,12 @@
+{
+  "name": "@yourorg/ai-standards",
+  "version": "0.7.0",
+  "type": "module",
+  "bin": {
+    "ai-standards": "dist/sync/cli.js",
+    "ai": "dist/sync/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  }
+}

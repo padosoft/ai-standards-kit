@@ -90,6 +90,7 @@ Supports:
 - Cursor (.cursor/rules/*.mdc),
 - Gemini (~/.gemini/GEMINI.md & .gemini/GEMINI.md),
 - OpenCode (.opencode/AGENTS.md).
+- Warp (WARP.md)
 
 
 ## Esempi rapidi d’uso
@@ -117,3 +118,4 @@ ai validate
   **OpenCode AI – Agents:** https://opencode.ai/docs/agents/  
   **OpenCode AI – Config (agents):** https://opencode.ai/docs/config/#agents
 - **Claude CLI:** https://docs.anthropic.com/en/docs/agents-and-tools/anthropic-cli  (o pagina ufficiale “Claude CLI” più aggiornata)
+- **Warp:** (pagina ufficiale “WARP” più aggiornata)

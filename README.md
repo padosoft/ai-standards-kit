@@ -82,7 +82,14 @@ ai-standards/                               # root del pacchetto
 
 # @padosoft/ai-standards
 
-See commands: `ai --help`. Supports Copilot (.github/copilot-instructions.md), Cursor (.cursor/rules/*.mdc), Gemini (~/.gemini/GEMINI.md & .gemini/GEMINI.md), OpenCode (.opencode/AGENTS.md).
+See commands: `ai --help`. 
+
+Supports:
+- Cloude (CLAUDE.md),
+- Copilot (.github/copilot-instructions.md),
+- Cursor (.cursor/rules/*.mdc),
+- Gemini (~/.gemini/GEMINI.md & .gemini/GEMINI.md),
+- OpenCode (.opencode/AGENTS.md).
 
 
 ## Esempi rapidi d’uso

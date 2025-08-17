@@ -1,5 +1,5 @@
 {
-  "name": "@yourorg/ai-standards",
+  "name": "@padosoft/ai-standards",
   "version": "0.7.0",
   "type": "module",
   "bin": {

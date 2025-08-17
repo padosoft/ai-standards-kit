@@ -1,4 +1,4 @@
-# @yourorg/ai-standards — pacchetto FULL enterprise
+# ai-standards — pacchetto FULL enterprise
 
 ## Struttura cartelle
 

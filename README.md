@@ -80,7 +80,7 @@ ai-standards/                               # root del pacchetto
 └─ COMPLETE_PROJECT_PROMPT.md               # ricetta per ricreare il pacchetto
 ```
 
-# @yourorg/ai-standards
+# @padosoft/ai-standards
 
 See commands: `ai --help`. Supports Copilot (.github/copilot-instructions.md), Cursor (.cursor/rules/*.mdc), Gemini (~/.gemini/GEMINI.md & .gemini/GEMINI.md), OpenCode (.opencode/AGENTS.md).
 
@@ -88,7 +88,7 @@ See commands: `ai --help`. Supports Copilot (.github/copilot-instructions.md), C
 ## Esempi rapidi d’uso
 ### Setup globale (una tantum)
 ```bash
-npm i -g @yourorg/ai-standards
+npm i -g @padosoft/ai-standards
 ai bootstrap --user
 ai validate
 ```

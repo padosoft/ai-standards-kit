@@ -1,11 +1,13 @@
 # COMPLETE PROJECT PROMPT - AI Standards Kit
 
 ```
-   _         _                         _                 _       
-  / \  _   _(_)_ __    __ _ _ __   ___| | ___   __ _  __| | ___ 
- / _ \| | | | | '_ \  / _` | '_ \ / __| |/ _ \ / _` |/ _` |/ _ \
-/ ___ \ |_| | | | | || (_| | | | | (__| | (_) | (_| | (_| |  __/
-/_/   \_\__,_|_|_| |_(_)__,_|_| |_|\___|_|\___/ \__,_|\__,_|\___|
+▄▀█ █   █▀ ▀█▀ ▄▀█ █▄░█ █▀▄ ▄▀█ █▀█ █▀▄ █▀
+█▀█ █   ▄█  █  █▀█ █░▀█ █▄▀ █▀█ █▀▄ █▄▀ ▄█
+
+▀█▀ ▄▀█ █▄░█ █▀▄ ▄▀█ █▀█ █▀▄   █▄▀ █ ▀█▀
+░█░ █▀█ █░▀█ █▄▀ █▀█ █▀▄ █▄▀   █░█ █ ░█░
+🤖 Enterprise AI Engineering Standards & Agents toolkit
+   by Lorenzo Padovani - Surface SRL
                      COMPLETE PROJECT RECREATION PROMPT
 ```
 
@@ -97,6 +99,9 @@ Create a **complete enterprise AI standards toolkit** named `@padosoft/ai-standa
   - **docs-writer.md**: Documentation specialist (README, ADR, RFC, API docs)  
   - **test-writer.md**: Test architect with 80%+ coverage strategy
   - **dto-builder.md**: DTO and mapper specialist with versioning
+  - **code-reviewer.md**: Security, performance, and maintainability auditor
+  - **adapter-builder.md**: AI tool adapter specialist for new integrations
+  - **node-command-builder.md**: Node.js/TypeScript CLI builder with enterprise features
   - Each agent with proper YAML frontmatter and comprehensive implementation
 
 - [ ] **3.3** Create Global Standards (`ai/docs/standards/global/`)
@@ -211,6 +216,10 @@ Create a **complete enterprise AI standards toolkit** named `@padosoft/ai-standa
   - [ ] `ai validate` correctly identifies missing/outdated files
   - [ ] `ai print --target=copilot` outputs generated rules
   - [ ] `ai update` updates global files
+  - [ ] CLI banner shows new ASCII art with color (rosa/magenta)
+  - [ ] Example command works: `node dist/example-command.js help`
+  - [ ] Example command test mode: `node dist/example-command.js process --test --verbose`
+  - [ ] Example command shows proper logging with icons and timestamps
 
 - [ ] **7.2** Edge Case Testing
   - [ ] Handle missing home directories gracefully
@@ -219,22 +228,50 @@ Create a **complete enterprise AI standards toolkit** named `@padosoft/ai-standa
   - [ ] Handle invalid YAML in targets.yml
   - [ ] Handle missing dependencies gracefully
 
-### Phase 8: Final Integration and Polish
-- [ ] **8.1** Complete Code Review
+### Phase 8: Node Command Builder Features
+- [ ] **8.1** Implement Node Command Builder Agent
+  - [ ] Create `ai/.claude/agents/global/node-command-builder.md`
+  - [ ] ASCII art banner with purple color (\x1b[95m)
+  - [ ] Professional Logger class with verbose mode
+  - [ ] Help system with global/local/npx examples
+  - [ ] Test mode (--test) for safe execution
+  - [ ] Verbose mode (--verbose) with HTTP logging
+  - [ ] DateTime tracking (start/end/duration)
+  - [ ] Configuration management (JSON + env)
+  - [ ] Module detection for both global and local execution
+  - [ ] Short alias support in package.json bin entries
+
+- [ ] **8.2** Test Example Command
+  - [ ] Create `src/example-command.ts` demonstrating all features
+  - [ ] Banner displays correctly with color
+  - [ ] Help command shows installation methods
+  - [ ] Test mode prevents destructive operations
+  - [ ] Verbose mode shows HTTP requests/responses with timing
+  - [ ] Configuration loads from environment variables
+  - [ ] Both global and local execution work correctly
+
+- [ ] **8.3** Documentation Updates
+  - [ ] Update README.md with node-command-builder section
+  - [ ] Add agent to list of global agents
+  - [ ] Include example usage and output
+  - [ ] Document all automatic features
+
+### Phase 9: Final Integration and Polish
+- [ ] **9.1** Complete Code Review
   - [ ] All TypeScript strict mode compliance
   - [ ] Proper error handling in all functions
   - [ ] Consistent code style and patterns
   - [ ] All imports and exports correct
   - [ ] No hardcoded paths (use HOME, ROOT constants)
 
-- [ ] **8.2** Documentation Review
+- [ ] **9.2** Documentation Review
   - [ ] README.md matches actual implementation
   - [ ] All commands documented with correct syntax
   - [ ] Examples work as written
   - [ ] File paths in documentation are accurate
   - [ ] All supported AI tools mentioned and linked
 
-- [ ] **8.3** Package Preparation
+- [ ] **9.3** Package Preparation
   - [ ] package.json version set to 1.0.0
   - [ ] All dependencies with correct versions
   - [ ] Files field excludes src/ and includes dist/

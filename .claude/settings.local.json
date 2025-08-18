@@ -4,7 +4,14 @@
       "WebFetch(domain:docs.windsurf.com)",
       "WebFetch(domain:docs.augmentcode.com)",
       "Bash(mkdir:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(npm run cli help)",
+      "Bash(npx tsc:*)",
+      "Bash(npx typescript:*)",
+      "Bash(./node_modules/.bin/tsc:*)",
+      "Bash(\"node_modules/.bin/tsc\" -p tsconfig.json)",
+      "Bash(npm install:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

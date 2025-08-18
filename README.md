@@ -1,12 +1,13 @@
 # AI-Standards Enterprise Kit
 
 ```
-   _         _                         _                 _       
-  / \  _   _(_)_ __    __ _ _ __   ___| | ___   __ _  __| | ___ 
- / _ \| | | | | '_ \  / _` | '_ \ / __| |/ _ \ / _` |/ _` |/ _ \
-/ ___ \ |_| | | | | || (_| | | | | (__| | (_) | (_| | (_| |  __/
-/_/   \_\__,_|_|_| |_(_)__,_|_| |_|\___|_|\___/ \__,_|\__,_|\___|
-                        @padosoft/ai-standards v1.0.0
+▄▀█ █   █▀ ▀█▀ ▄▀█ █▄░█ █▀▄ ▄▀█ █▀█ █▀▄ █▀
+█▀█ █   ▄█  █  █▀█ █░▀█ █▄▀ █▀█ █▀▄ █▄▀ ▄█
+
+▀█▀ ▄▀█ █▄░█ █▀▄ ▄▀█ █▀█ █▀▄   █▄▀ █ ▀█▀
+░█░ █▀█ █░▀█ █▄▀ █▀█ █▀▄ █▄▀   █░█ █ ░█░
+🤖 Enterprise AI Engineering Standards & Agents toolkit
+   by Lorenzo Padovani - Surface SRL
 ```
 
 **Enterprise AI Engineering Standards & Agents toolkit for multi-stack development**
@@ -301,6 +302,8 @@ ai sync --cursor-here  # Include automaticamente le guide del SDK
 - **`test-writer`** — Unit/integration/E2E con 80%+ coverage
 - **`dto-builder`** — DTO + mapper, versioning, serialization
 - **`code-reviewer`** — Security, performance, maintainability
+- **`adapter-builder`** — Crea adapter per nuovi AI tools analizzando documentazione ufficiale
+- **`node-command-builder`** — Crea CLI Node.js professionali con logging, test mode, help system
 
 ### PHP & Laravel Agents
 - **`laravel-routes-architect`** — Routes, middleware, versioning
@@ -422,6 +425,65 @@ I quality gates sono definiti in `.claude/settings.json` e bloccano automaticame
 
 ---
 
+## 🚀 Node Command Builder - Agente per CLI Professionali
+
+Il nuovo agente **`node-command-builder`** crea comandi CLI Node.js/TypeScript con standard enterprise:
+
+### Funzionalità Automatiche
+- **🎨 ASCII Art Banner** - Colorato (viola) con branding personalizzato
+- **📋 Help System** - Comando `--help` con esempi per global/local/npx
+- **🧪 Test Mode** - Flag `--test` per esecuzione sicura senza side effects
+- **🔍 Verbose Logging** - Flag `--verbose` per debug dettagliato
+- **⏱️ DateTime Tracking** - Start/end time + durata esecuzione
+- **🌐 HTTP Logging** - Request/response con timing in verbose mode
+- **⚙️ Configuration** - Gestione config da file JSON e environment
+- **📦 Multi-Installation** - Supporto global, locale e npx
+- **🔤 Short Aliases** - Alias corti per comandi lunghi
+
+### Esempio di Comando Generato
+```typescript
+// Banner con ASCII art viola
+function showBanner() {
+  console.log('\x1b[95m' + `
+▄▀█ █   █▀ ▀█▀ ▄▀█ █▄░█ █▀▄ ▄▀█ █▀█ █▀▄ █▀
+█▀█ █   ▄█  █  █▀█ █░▀█ █▄▀ █▀█ █▀▄ █▄▀ ▄█
+
+[NOME COMANDO]
+🤖 [Descrizione del comando]
+   by Surface SRL
+  ` + '\x1b[0m');
+}
+```
+
+### Uso dell'Agente
+```bash
+# In Claude Code:
+"Usa node-command-builder per creare un CLI tool che:
+- Processa file CSV e li carica su API
+- Ha modalità test per validazione senza upload
+- Logga tutte le chiamate HTTP in verbose mode
+- Supporta batch processing con progress bar"
+```
+
+### Output Professionale
+```bash
+# Installazione globale
+npm install -g @surface/data-processor
+data-processor upload --file data.csv --test --verbose
+
+# Output:
+🚀 Upload command started
+   Started at: 2025-08-18 23:45:00
+⚙️  API URL: https://api.example.com
+⚙️  Test Mode: true
+⚙️  File: data.csv
+🔍 Reading CSV file...
+🌐 POST /api/batch (234ms)
+✅ Test completed - no data uploaded
+🏁 Command completed
+   Duration: 456ms
+```
+
 ## 📈 Estensione e Personalizzazione
 
 ### Aggiungere Nuovo Stack
@@ -486,4 +548,4 @@ COPYRIGHT PADOSOFT 2025
 
 ---ottimo
 
-*Sviluppato con ❤️ da [Padosoft](https://www.padosoft.com) per accelerare lo sviluppo enterprise con AI tools.*
+*Sviluppato con ❤️ da Lorenzo Padovani [Padosoft](https://www.padosoft.com) per accelerare lo sviluppo enterprise con AI tools.*

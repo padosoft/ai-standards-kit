@@ -441,7 +441,7 @@ Il comando `ai harvest` importa automaticamente in `_deps/`.
 
 ## 📄 Licenza
 
-MIT License - vedi file [LICENSE](LICENSE) per dettagli.
+COPYRIGHT PADOSOFT 2025
 
 ---
 
@@ -449,7 +449,7 @@ MIT License - vedi file [LICENSE](LICENSE) per dettagli.
 
 - **Issues**: [GitHub Issues](https://github.com/padosoft/ai-standards-kit/issues)  
 - **Discussions**: [GitHub Discussions](https://github.com/padosoft/ai-standards-kit/discussions)
-- **Email**: support@padosoft.com
+- **Email**: helpdesk AT padosoft.com
 
 ---
 

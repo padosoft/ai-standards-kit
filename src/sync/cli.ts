@@ -274,6 +274,123 @@ function writeWarpHere(cwd: string) {
   console.log('✓ Warp → WARP.md');
 }
 
+function writeAugmentHere(cwd: string, split: boolean = false) {
+  const distDir = path.join(HOME, '.ai-standards/dist');
+  
+  if (split) {
+    // Split rules by stack
+    const stacks = detectStacks(cwd);
+    const stackFiles: Record<string, string> = {
+      'global': 'AUGMENT_GLOBAL.md',
+      'php-laravel': 'AUGMENT_LARAVEL.md',
+      'ts-hono': 'AUGMENT_TYPESCRIPT.md',
+      'cf-workers': 'AUGMENT_CLOUDFLARE.md',
+      'react-native': 'AUGMENT_REACT_NATIVE.md'
+    };
+    
+    let written = false;
+    const rulesDir = path.join(cwd, '.augment/rules');
+    
+    // Always write global rules
+    const globalSrc = path.join(distDir, 'AUGMENT_GLOBAL.md');
+    if (exists(globalSrc)) {
+      mkdirp(rulesDir);
+      fs.copyFileSync(globalSrc, path.join(rulesDir, 'ai-standards-global.md'));
+      console.log('✓ Augment → .augment/rules/ai-standards-global.md');
+      written = true;
+    }
+    
+    // Write stack-specific rules
+    stacks.forEach(stack => {
+      const filename = stackFiles[stack];
+      if (filename) {
+        const src = path.join(distDir, filename);
+        if (exists(src)) {
+          mkdirp(rulesDir);
+          fs.copyFileSync(src, path.join(rulesDir, `ai-standards-${stack}.md`));
+          console.log(`✓ Augment → .augment/rules/ai-standards-${stack}.md`);
+          written = true;
+        }
+      }
+    });
+    
+    if (!written) {
+      console.error('⚠ No Augment rule files found. Run "ai bootstrap --user" first.');
+    }
+  } else {
+    // Single file approach (workspace guidelines)
+    const src = path.join(distDir, 'AUGMENT_GUIDELINES.md');
+    const dst = path.join(cwd, '.augment-guidelines');
+    
+    if (!exists(src)) {
+      console.error('⚠ Source not found. Run "ai bootstrap --user" first.');
+      return;
+    }
+    
+    fs.copyFileSync(src, dst);
+    console.log('✓ Augment → .augment-guidelines');
+  }
+}
+
+function writeWindsurfHere(cwd: string, split: boolean = false) {
+  const distDir = path.join(HOME, '.ai-standards/dist');
+  const rulesDir = path.join(cwd, '.windsurf/rules');
+  
+  if (split) {
+    // Split rules by stack
+    const stacks = detectStacks(cwd);
+    const stackFiles: Record<string, string> = {
+      'global': 'WINDSURF_GLOBAL.md',
+      'php-laravel': 'WINDSURF_LARAVEL.md',
+      'ts-hono': 'WINDSURF_TYPESCRIPT.md',
+      'cf-workers': 'WINDSURF_CLOUDFLARE.md',
+      'react-native': 'WINDSURF_REACT_NATIVE.md'
+    };
+    
+    let written = false;
+    
+    // Always write global rules
+    const globalSrc = path.join(distDir, 'WINDSURF_GLOBAL.md');
+    if (exists(globalSrc)) {
+      mkdirp(rulesDir);
+      fs.copyFileSync(globalSrc, path.join(rulesDir, 'ai-standards-global.md'));
+      console.log('✓ Windsurf → .windsurf/rules/ai-standards-global.md');
+      written = true;
+    }
+    
+    // Write stack-specific rules
+    stacks.forEach(stack => {
+      const filename = stackFiles[stack];
+      if (filename) {
+        const src = path.join(distDir, filename);
+        if (exists(src)) {
+          mkdirp(rulesDir);
+          fs.copyFileSync(src, path.join(rulesDir, `ai-standards-${stack}.md`));
+          console.log(`✓ Windsurf → .windsurf/rules/ai-standards-${stack}.md`);
+          written = true;
+        }
+      }
+    });
+    
+    if (!written) {
+      console.error('⚠ No Windsurf rule files found. Run "ai bootstrap --user" first.');
+    }
+  } else {
+    // Single file approach
+    const src = path.join(distDir, 'WINDSURF_RULES.md');
+    const dst = path.join(rulesDir, 'ai-standards.md');
+    
+    if (!exists(src)) {
+      console.error('⚠ Source not found. Run "ai bootstrap --user" first.');
+      return;
+    }
+    
+    mkdirp(rulesDir);
+    fs.copyFileSync(src, dst);
+    console.log('✓ Windsurf → .windsurf/rules/ai-standards.md');
+  }
+}
+
 function writeProjectContextHere(cwd: string) {
   const stacks = detectStacks(cwd);
   const distDir = path.join(HOME, '.ai-standards/dist');
@@ -332,13 +449,14 @@ function printCommand(target: string) {
     'gemini': 'GEMINI_SYSTEM.md',
     'opencode': 'OPENCODE_AGENTS.md',
     'warp': 'WARP.md',
-    'warp-global': 'WARP_GLOBAL.md'
+    'warp-global': 'WARP_GLOBAL.md',
+    'augment': 'AUGMENT_GUIDELINES.md'
   };
   
   const file = files[target];
   if (!file) {
     console.error(`Unknown target: ${target}`);
-    console.log('Available targets: copilot, cursor, gemini, opencode, warp, warp-global');
+    console.log('Available targets: copilot, cursor, gemini, opencode, warp, warp-global, augment');
     return;
   }
   
@@ -397,14 +515,20 @@ async function main() {
     if (flags['opencode-here']) {
       writeOpenCodeHere(process.cwd());
     }
+    if (flags['windsurf-here']) {
+      writeWindsurfHere(process.cwd(), flags['windsurf-split']);
+    }
+    if (flags['augment-here']) {
+      writeAugmentHere(process.cwd(), flags['augment-split']);
+    }
     if (flags['project-context']) {
       writeProjectContextHere(process.cwd());
     }
     
     if (!flags['cursor-here'] && !flags['warp-here'] && !flags['gemini-here'] && 
-        !flags['copilot-here'] && !flags['opencode-here'] && !flags['project-context']) {
+        !flags['copilot-here'] && !flags['opencode-here'] && !flags['windsurf-here'] && !flags['augment-here'] && !flags['project-context']) {
       console.log('\n✓ Sync complete. Files generated in ~/.ai-standards/dist/');
-      console.log('Use --cursor-here, --warp-here, --gemini-here, --copilot-here, --opencode-here, --project-context to write to project.');
+      console.log('Use --cursor-here, --warp-here, --gemini-here, --copilot-here, --opencode-here, --windsurf-here, --augment-here, --project-context to write to project.');
     }
     break;
     
@@ -454,6 +578,10 @@ Commands:
     --gemini-here             Write Gemini config to project
     --opencode-here           Write OpenCode agents to project
     --warp-here               Write Warp config to project
+    --windsurf-here           Write Windsurf rules to project
+    --windsurf-split          Split Windsurf rules by stack (multiple files)
+    --augment-here            Write Augment Code guidelines to project
+    --augment-split           Split Augment rules by stack (multiple files)
     --project-context         Write project-specific context (auto-detected stacks)
   ai harvest [options]        Import AI bundles from dependencies
     --clean                   Clean existing deps before import
@@ -467,7 +595,7 @@ Commands:
 Examples:
   ai bootstrap --user
   ai harvest && ai sync --cursor-here --cursor-split
-  ai sync --copilot-here --gemini-here --opencode-here --project-context
+  ai sync --copilot-here --gemini-here --opencode-here --windsurf-here --augment-here --project-context
   ai validate
   ai check-updates
 `);

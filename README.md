@@ -178,6 +178,10 @@ ai --help                   # Mostra help completo
 --gemini-here             # Scrivi Gemini config (.gemini/GEMINI.md)
 --opencode-here           # Scrivi OpenCode agents (.opencode/AGENTS.md + dynamic agents)
 --warp-here               # Scrivi Warp config (WARP.md)
+--windsurf-here           # Scrivi Windsurf rules (.windsurf/rules/ai-standards.md)
+--windsurf-split          # Split Windsurf rules per stack (multiple files)
+--augment-here            # Scrivi Augment Code guidelines (.augment-guidelines)
+--augment-split           # Split Augment rules per stack (.augment/rules/)
 --project-context         # Scrivi template personalizzati (auto-detect stack)
 ```
 
@@ -196,6 +200,7 @@ ai print --target=gemini      # Stampa rules per Google Gemini
 ai print --target=opencode    # Stampa rules per OpenCode AI
 ai print --target=warp        # Stampa rules per Warp terminal
 ai print --target=warp-global # Stampa rules globali per Warp
+ai print --target=augment     # Stampa rules per Augment Code
 ```
 
 ---
@@ -213,7 +218,7 @@ ai bootstrap --user
 # 3. Nel progetto Laravel
 cd my-laravel-project
 ai harvest
-ai sync --cursor-here --copilot-here --gemini-here --project-context
+ai sync --cursor-here --copilot-here --gemini-here --windsurf-here --augment-here --project-context
 
 # 4. Verifica tutto
 ai validate
@@ -250,7 +255,7 @@ npm update -g @padosoft/ai-standards
 ai update
 
 # Rigenera configurazioni progetto (con auto-check updates)
-ai sync --cursor-here --copilot-here --gemini-here --project-context
+ai sync --cursor-here --copilot-here --gemini-here --windsurf-here --augment-here --project-context
 
 # Verifica aggiornamenti
 ai validate
@@ -372,6 +377,8 @@ I quality gates sono definiti in `.claude/settings.json` e bloccano automaticame
 | **Google Gemini** | `~/.gemini/GEMINI.md` | `.gemini/GEMINI.md` | ❌ (file unico) | ⚠️ (manuale) |
 | **OpenCode AI** | `~/.config/opencode/AGENTS.md` | `.opencode/AGENTS.md + agent/*.md` | ✅ (agenti dinamici) | ⚠️ (manuale) |
 | **Warp Terminal** | ❌ | `WARP.md` | ❌ (file unico) | ⚠️ (manuale) |
+| **Windsurf IDE** | ❌ | `.windsurf/rules/ai-standards.md` | ✅ (--windsurf-split) | ✅ (auto-detect) |
+| **Augment Code** | ❌ | `.augment-guidelines` | ✅ (--augment-split) | ✅ (auto-detect) |
 | **🆕 Project Templates** | ❌ | `.ai-standards/PROJECT_*.md` | ✅ (per stack) | ✅ (auto-detect) |
 
 ### Filosofia Multi-Tool

@@ -13,7 +13,7 @@
 
 Create a **complete enterprise AI standards toolkit** named `@padosoft/ai-standards` that serves as:
 - **Single Source of Truth (SSOT)** for development standards across multiple stacks
-- **Multi-AI tool adapter** that generates configurations for Claude Code, GitHub Copilot, Cursor IDE, Google Gemini, OpenCode AI, and Warp
+- **Multi-AI tool adapter** that generates configurations for Claude Code, GitHub Copilot, Cursor IDE, Google Gemini, OpenCode AI, Warp, Windsurf IDE, and Augment Code
 - **Quality gates enforcer** with enterprise-level validation rules
 - **Dependency harvester** that imports standards from npm/composer packages
 
@@ -119,15 +119,19 @@ Create a **complete enterprise AI standards toolkit** named `@padosoft/ai-standa
 
 ### Phase 4: Export Configuration
 - [ ] **4.1** Create `adapters/config/targets.yml`
-  - Target configurations for: copilot, cursor, gemini, opencode, warp, warp-global
+  - Target configurations for: copilot, cursor, gemini, opencode, warp, warp-global, windsurf, augment
   - Each target with correct path, includes, and template references
   - Support for all stacks: global, php-laravel, ts-hono, cf-workers, react-native
+  - Windsurf-specific configurations with split support (windsurf-global, windsurf-laravel, windsurf-typescript)
+  - Augment Code configurations with split support (augment-global, augment-laravel, augment-typescript)
 
 - [ ] **4.2** Create Template Files (`adapters/templates/`)
   - copilot_header.md, copilot_footer.md
   - cursor_header.md, cursor_footer.md  
   - gemini_header.md
   - warp_header.md, warp_footer.md, warp_global_header.md
+  - windsurf_header.md, windsurf_footer.md (with Cascade-specific instructions)
+  - augment_header.md, augment_footer.md (with guidelines-specific instructions)
   - Each template with appropriate instructions for the target AI tool
 
 ### Phase 5: Advanced Features Implementation
@@ -197,6 +201,10 @@ Create a **complete enterprise AI standards toolkit** named `@padosoft/ai-standa
   - [ ] `ai sync --project-context` creates project-specific templates with stack detection
   - [ ] `ai sync --cursor-here --cursor-split` creates multiple MDC files
   - [ ] `ai sync --copilot-here` creates .github/copilot-instructions.md
+  - [ ] `ai sync --windsurf-here` creates .windsurf/rules/ai-standards.md
+  - [ ] `ai sync --windsurf-here --windsurf-split` creates stack-specific Windsurf files
+  - [ ] `ai sync --augment-here` creates .augment-guidelines
+  - [ ] `ai sync --augment-here --augment-split` creates stack-specific Augment files
   - [ ] `ai sync --gemini-here` creates .gemini/GEMINI.md
   - [ ] `ai sync --opencode-here` creates .opencode/AGENTS.md + dynamic agents
   - [ ] `ai harvest` works with mock packages

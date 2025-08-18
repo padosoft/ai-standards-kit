@@ -112,3 +112,95 @@ react-native-project:
         - ai/docs/standards/react-native/**
       header_template: "adapters/templates/project_header.md"
       footer_template: "adapters/templates/project_footer.md"
+
+# Windsurf IDE Integration
+windsurf:
+  outputs:
+    - path: "~/.ai-standards/dist/WINDSURF_RULES.md"
+      mode: merge
+      includes:
+        - ai/docs/standards/global/**
+        - ai/docs/standards/php-laravel/**
+        - ai/docs/standards/ts-hono/**
+        - ai/docs/standards/cf-workers/**
+        - ai/docs/standards/react-native/**
+      header_template: "adapters/templates/windsurf_header.md"
+      footer_template: "adapters/templates/windsurf_footer.md"
+
+# Windsurf Stack-Specific Rules (Optional Split)
+windsurf-global:
+  outputs:
+    - path: "~/.ai-standards/dist/WINDSURF_GLOBAL.md"
+      mode: merge
+      includes:
+        - ai/docs/standards/global/**
+      header_template: "adapters/templates/windsurf_header.md"
+      footer_template: "adapters/templates/windsurf_footer.md"
+
+windsurf-laravel:
+  condition: "composer.json"
+  outputs:
+    - path: "~/.ai-standards/dist/WINDSURF_LARAVEL.md"
+      mode: merge
+      includes:
+        - ai/docs/standards/global/**
+        - ai/docs/standards/php-laravel/**
+      header_template: "adapters/templates/windsurf_header.md"
+      footer_template: "adapters/templates/windsurf_footer.md"
+
+windsurf-typescript:
+  condition: "package.json && tsconfig.json"
+  outputs:
+    - path: "~/.ai-standards/dist/WINDSURF_TYPESCRIPT.md"
+      mode: merge
+      includes:
+        - ai/docs/standards/global/**
+        - ai/docs/standards/ts-hono/**
+      header_template: "adapters/templates/windsurf_header.md"
+      footer_template: "adapters/templates/windsurf_footer.md"
+
+# Augment Code Integration
+augment:
+  outputs:
+    - path: "~/.ai-standards/dist/AUGMENT_GUIDELINES.md"
+      mode: merge
+      includes:
+        - ai/docs/standards/global/**
+        - ai/docs/standards/php-laravel/**
+        - ai/docs/standards/ts-hono/**
+        - ai/docs/standards/cf-workers/**
+        - ai/docs/standards/react-native/**
+      header_template: "adapters/templates/augment_header.md"
+      footer_template: "adapters/templates/augment_footer.md"
+
+# Augment Code Stack-Specific Rules (Optional Split)
+augment-global:
+  outputs:
+    - path: "~/.ai-standards/dist/AUGMENT_GLOBAL.md"
+      mode: merge
+      includes:
+        - ai/docs/standards/global/**
+      header_template: "adapters/templates/augment_header.md"
+      footer_template: "adapters/templates/augment_footer.md"
+
+augment-laravel:
+  condition: "composer.json"
+  outputs:
+    - path: "~/.ai-standards/dist/AUGMENT_LARAVEL.md"
+      mode: merge
+      includes:
+        - ai/docs/standards/global/**
+        - ai/docs/standards/php-laravel/**
+      header_template: "adapters/templates/augment_header.md"
+      footer_template: "adapters/templates/augment_footer.md"
+
+augment-typescript:
+  condition: "package.json && tsconfig.json"
+  outputs:
+    - path: "~/.ai-standards/dist/AUGMENT_TYPESCRIPT.md"
+      mode: merge
+      includes:
+        - ai/docs/standards/global/**
+        - ai/docs/standards/ts-hono/**
+      header_template: "adapters/templates/augment_header.md"
+      footer_template: "adapters/templates/augment_footer.md"

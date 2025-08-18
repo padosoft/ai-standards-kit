@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:docs.windsurf.com)",
+      "WebFetch(domain:docs.augmentcode.com)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -67,3 +67,48 @@ warp-global:
       includes:
         - ai/docs/standards/global/**
       header_template: "adapters/templates/warp_global_header.md"
+
+# Template personalizzati per progetto (con stack detection)
+laravel-project:
+  condition: "composer.json"
+  outputs:
+    - path: "~/.ai-standards/dist/PROJECT_LARAVEL.md"
+      mode: merge
+      includes:
+        - ai/docs/standards/global/**
+        - ai/docs/standards/php-laravel/**
+      header_template: "adapters/templates/project_header.md"
+      footer_template: "adapters/templates/project_footer.md"
+
+typescript-project:
+  condition: "package.json && tsconfig.json"
+  outputs:
+    - path: "~/.ai-standards/dist/PROJECT_TYPESCRIPT.md"
+      mode: merge
+      includes:
+        - ai/docs/standards/global/**
+        - ai/docs/standards/ts-hono/**
+      header_template: "adapters/templates/project_header.md"
+      footer_template: "adapters/templates/project_footer.md"
+
+cloudflare-project:
+  condition: "wrangler.toml"
+  outputs:
+    - path: "~/.ai-standards/dist/PROJECT_CLOUDFLARE.md"
+      mode: merge
+      includes:
+        - ai/docs/standards/global/**
+        - ai/docs/standards/cf-workers/**
+      header_template: "adapters/templates/project_header.md"
+      footer_template: "adapters/templates/project_footer.md"
+
+react-native-project:
+  condition: "ios || android || app.json"
+  outputs:
+    - path: "~/.ai-standards/dist/PROJECT_REACT_NATIVE.md"
+      mode: merge
+      includes:
+        - ai/docs/standards/global/**
+        - ai/docs/standards/react-native/**
+      header_template: "adapters/templates/project_header.md"
+      footer_template: "adapters/templates/project_footer.md"

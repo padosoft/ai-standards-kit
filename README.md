@@ -165,6 +165,7 @@ ai harvest [options]        # Importa AI bundles dalle dependencies
 ai update                   # Aggiorna standards globali da source
 ai print --target=<target>  # Stampa rules generate per target specifico
 ai validate                 # Verifica se configurazioni sono aggiornate
+ai check-updates            # Controlla aggiornamenti pacchetto npm
 ai --help                   # Mostra help completo
 ```
 
@@ -177,6 +178,7 @@ ai --help                   # Mostra help completo
 --gemini-here             # Scrivi Gemini config (.gemini/GEMINI.md)
 --opencode-here           # Scrivi OpenCode agents (.opencode/AGENTS.md + dynamic agents)
 --warp-here               # Scrivi Warp config (WARP.md)
+--project-context         # Scrivi template personalizzati (auto-detect stack)
 ```
 
 ### Harvest Options
@@ -211,7 +213,7 @@ ai bootstrap --user
 # 3. Nel progetto Laravel
 cd my-laravel-project
 ai harvest
-ai sync --cursor-here --copilot-here --gemini-here
+ai sync --cursor-here --copilot-here --gemini-here --project-context
 
 # 4. Verifica tutto
 ai validate
@@ -238,17 +240,38 @@ Il **task-router** automaticamente:
 
 ### Aggiornamento Standards
 ```bash
+# Controlla automaticamente aggiornamenti
+ai check-updates
+
 # Aggiorna package globale
 npm update -g @padosoft/ai-standards
 
 # Aggiorna files locali da nuova versione
 ai update
 
-# Rigenera configurazioni progetto
-ai sync --cursor-here --copilot-here --gemini-here --opencode-here
+# Rigenera configurazioni progetto (con auto-check updates)
+ai sync --cursor-here --copilot-here --gemini-here --project-context
 
 # Verifica aggiornamenti
 ai validate
+```
+
+### Template Personalizzati per Progetto
+```bash
+# Auto-detection stack e generazione template personalizzati
+ai sync --project-context
+
+# Il sistema detecta automaticamente:
+# - Laravel (composer.json) → .ai-standards/PROJECT_PHP_LARAVEL.md
+# - TypeScript (package.json + tsconfig.json) → PROJECT_TYPESCRIPT.md  
+# - Cloudflare Workers (wrangler.toml) → PROJECT_CLOUDFLARE.md
+# - React Native (ios/android/app.json) → PROJECT_REACT_NATIVE.md
+
+# Template includono:
+# - Timestamp generazione
+# - Stack rilevati automaticamente
+# - Regole specifiche per il progetto
+# - Quality gates personalizzate
 ```
 
 ### Harvest da Pacchetti
@@ -341,19 +364,22 @@ I quality gates sono definiti in `.claude/settings.json` e bloccano automaticame
 
 ## 🛠️ AI Tools Supportati
 
-| Tool | File Globale | File Progetto | Split Support |
-|------|-------------|---------------|---------------|
-| **Claude Code** | `~/.claude/agents/` | `.claude/agents/` | ✅ (agenti separati) |
-| **GitHub Copilot** | `~/.config/github-copilot/intellij/` | `.github/copilot-instructions.md` | ❌ (file unico) |
-| **Cursor IDE** | ❌ | `.cursor/rules/ai-standards.mdc` | ✅ (--cursor-split) |
-| **Google Gemini** | `~/.gemini/GEMINI.md` | `.gemini/GEMINI.md` | ❌ (file unico) |
-| **OpenCode AI** | `~/.config/opencode/AGENTS.md` | `.opencode/AGENTS.md + agent/*.md` | ✅ (agenti dinamici) |
-| **Warp Terminal** | ❌ | `WARP.md` | ❌ (file unico) |
+| Tool | File Globale | File Progetto | Split Support | Project Context |
+|------|-------------|---------------|---------------|----------------|
+| **Claude Code** | `~/.claude/agents/` | `.claude/agents/` | ✅ (agenti separati) | ✅ (auto-detect) |
+| **GitHub Copilot** | `~/.config/github-copilot/intellij/` | `.github/copilot-instructions.md` | ❌ (file unico) | ⚠️ (manuale) |
+| **Cursor IDE** | ❌ | `.cursor/rules/ai-standards.mdc` | ✅ (--cursor-split) | ⚠️ (manuale) |
+| **Google Gemini** | `~/.gemini/GEMINI.md` | `.gemini/GEMINI.md` | ❌ (file unico) | ⚠️ (manuale) |
+| **OpenCode AI** | `~/.config/opencode/AGENTS.md` | `.opencode/AGENTS.md + agent/*.md` | ✅ (agenti dinamici) | ⚠️ (manuale) |
+| **Warp Terminal** | ❌ | `WARP.md` | ❌ (file unico) | ⚠️ (manuale) |
+| **🆕 Project Templates** | ❌ | `.ai-standards/PROJECT_*.md` | ✅ (per stack) | ✅ (auto-detect) |
 
 ### Filosofia Multi-Tool
 - **Claude Code**: Usa agenti specializzati + router orchestratore (contesto segmentato)
 - **Altri tools**: Ricevono file merged con tutti gli standard (contesto unificato)
 - **Generazione dinamica**: Gli agenti OpenCode sono sintetizzati automaticamente da SSOT Claude
+- **🆕 Project Context**: Template personalizzati con auto-detection stack e timestamp
+- **🆕 Auto-Update**: Controllo automatico aggiornamenti durante sync e bootstrap
 - **Nessuna duplicazione**: Una sola fonte di verità, esportata in formati tool-specific
 
 ---
@@ -451,6 +477,6 @@ COPYRIGHT PADOSOFT 2025
 - **Discussions**: [GitHub Discussions](https://github.com/padosoft/ai-standards-kit/discussions)
 - **Email**: helpdesk AT padosoft.com
 
----
+---ottimo
 
 *Sviluppato con ❤️ da [Padosoft](https://www.padosoft.com) per accelerare lo sviluppo enterprise con AI tools.*

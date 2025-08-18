@@ -79,8 +79,10 @@ Create a **complete enterprise AI standards toolkit** named `@padosoft/ai-standa
   - Command: `update` for updating global standards
   - Command: `print --target=<target>` for displaying generated rules
   - Command: `validate` for configuration checking
+  - Command: `check-updates` for npm registry version checking
   - ASCII art banner with version display
   - Integration with all other modules
+  - Auto-update notifications during bootstrap and sync commands
 
 ### Phase 3: AI Standards (SSOT)
 - [ ] **3.1** Create `ai/.claude/settings.json`
@@ -152,6 +154,21 @@ Create a **complete enterprise AI standards toolkit** named `@padosoft/ai-standa
   - Merge with `targets.deps.yml` for export inclusion
   - Cache management with staleness detection
 
+- [ ] **5.5** Implement Auto-Update System
+  - Version checking against npm registry with semantic versioning
+  - `checkForUpdates()` function with graceful fallback
+  - Auto-notification during `bootstrap --user` and `sync` commands
+  - Manual `ai check-updates` command for on-demand checking
+  - Silent failure mode to prevent blocking if registry unavailable
+
+- [ ] **5.6** Implement Project-Specific Templates
+  - Stack detection system for Laravel, TypeScript/Hono, Cloudflare Workers, React Native
+  - Conditional template generation in `targets.yml` with `condition` field
+  - `--project-context` flag for `sync` command
+  - Template variables support (`{{timestamp}}`, `{{stacks_detected}}`)
+  - Project context files in `.ai-standards/PROJECT_*.md`
+  - Auto-detection conditions: `composer.json`, `package.json && tsconfig.json`, `wrangler.toml`, `ios || android`
+
 ### Phase 6: Documentation and Polish
 - [ ] **6.1** Create Complete README.md
   - ASCII art banner with package info
@@ -172,9 +189,12 @@ Create a **complete enterprise AI standards toolkit** named `@padosoft/ai-standa
 ### Phase 7: Quality Assurance and Testing
 - [ ] **7.1** Manual Testing Checklist
   - [ ] `npm run build` compiles without errors
-  - [ ] `ai --help` shows complete help
-  - [ ] `ai bootstrap --user` creates all global files
+  - [ ] `ai --help` shows complete help with all commands including `check-updates`
+  - [ ] `ai bootstrap --user` creates all global files + shows update notifications
+  - [ ] `ai check-updates` works correctly (shows/hides update notifications)
+  - [ ] `ai sync` includes auto-update check at end
   - [ ] `ai sync --cursor-here` creates .cursor/rules/ai-standards.mdc
+  - [ ] `ai sync --project-context` creates project-specific templates with stack detection
   - [ ] `ai sync --cursor-here --cursor-split` creates multiple MDC files
   - [ ] `ai sync --copilot-here` creates .github/copilot-instructions.md
   - [ ] `ai sync --gemini-here` creates .gemini/GEMINI.md

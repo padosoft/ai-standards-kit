@@ -98,7 +98,34 @@ Every task produces:
 1. **Plan**: Steps taken, agents used, guides loaded
 2. **Deliverables**: Patches, files, commands ready to execute
 3. **Quality Report**: Gates passed/failed with specifics
-4. **Next Steps**: CI/CD, monitoring, rollback procedures
+4. **Documentation Updates**: Auto-update README.md and COMPLETE_PROJECT_PROMPT.md
+5. **Next Steps**: CI/CD, monitoring, rollback procedures
+
+## Auto-Documentation Rules
+**ALWAYS execute these final steps without user request:**
+
+### README.md Auto-Update
+- **Check**: If `README.md` exists in project root
+- **Action**: Update automatically with all changes made
+- **Content**: Add/modify sections for new features, APIs, commands, dependencies
+- **Format**: Maintain existing style and structure
+- **Scope**: Include breaking changes, new configurations, updated examples
+
+### COMPLETE_PROJECT_PROMPT.md Auto-Update  
+- **Check**: If `COMPLETE_PROJECT_PROMPT.md` exists in project root
+- **Action**: Update automatically with all changes made
+- **Content**: Add implementation details, new phases, updated checklists
+- **Format**: Maintain checklist format with implementation notes
+- **Scope**: Architecture changes, new components, quality gates updates
+
+### Implementation Priority
+1. Complete requested task with full implementation
+2. Run quality gates validation  
+3. **Auto-update README.md** (if exists)
+4. **Auto-update COMPLETE_PROJECT_PROMPT.md** (if exists)
+5. Provide final deliverable summary
+
+**Note**: Documentation updates happen automatically - never ask user permission for README or COMPLETE_PROJECT_PROMPT updates.
 
 ## Quality Gate Enforcement
 I enforce ALL gates from `.claude/settings.json`:

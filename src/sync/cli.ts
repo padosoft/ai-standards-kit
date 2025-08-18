@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { parseArgv, detectStacks, read, write, exists, mkdirp, ROOT, HOME } from './utils.js';
+import { parseArgv, detectStacks, read, write, exists, mkdirp, ROOT, HOME, checkForUpdates } from './utils.js';
 import { harvest } from './harvest.js';
 import child_process from 'child_process';
 import path from 'path';
@@ -7,6 +7,7 @@ import os from 'os';
 import fs from 'fs';
 import fg from 'fast-glob';
 import yaml from 'js-yaml';
+import pkg from '../../package.json' with { type: 'json' };
 
 function banner() {
   console.log(`
@@ -15,8 +16,20 @@ function banner() {
  / _ \\| | | | | '_ \\  / _\` | '_ \\ / __| |/ _ \\ / _\` |/ _\` |/ _ \\
 / ___ \\ |_| | | | | || (_| | | | | (__| | (_) | (_| | (_| |  __/
 /_/   \\_\\__,_|_|_| |_(_)__,_|_| |_|\\___|_|\\___/ \\__,_|\\__,_|\\___|
-                        @padosoft/ai-standards v1.0.0
+                        @padosoft/ai-standards v${pkg.version}
 `);
+}
+
+async function checkAndNotifyUpdates() {
+  try {
+    const updateInfo = await checkForUpdates(pkg.name, pkg.version);
+    if (updateInfo.hasUpdate) {
+      console.log(`🆕 Nuova versione disponibile: v${updateInfo.latestVersion} (attuale: v${pkg.version})`);
+      console.log(`💡 Per aggiornare: ${updateInfo.updateUrl}\n`);
+    }
+  } catch (error) {
+    // Silent fail - non bloccare l'esecuzione se il controllo fallisce
+  }
 }
 
 function run(nodeFile: string, extraArgs: string[] = []) {
@@ -261,6 +274,44 @@ function writeWarpHere(cwd: string) {
   console.log('✓ Warp → WARP.md');
 }
 
+function writeProjectContextHere(cwd: string) {
+  const stacks = detectStacks(cwd);
+  const distDir = path.join(HOME, '.ai-standards/dist');
+  
+  if (stacks.length === 0) {
+    console.log('⚠ No specific stacks detected. Using global standards only.');
+    return;
+  }
+  
+  // Map detected stacks to project template files
+  const projectFiles: Record<string, string> = {
+    'php-laravel': 'PROJECT_LARAVEL.md',
+    'ts-hono': 'PROJECT_TYPESCRIPT.md', 
+    'cf-workers': 'PROJECT_CLOUDFLARE.md',
+    'react-native': 'PROJECT_REACT_NATIVE.md'
+  };
+  
+  let written = false;
+  stacks.forEach(stack => {
+    const filename = projectFiles[stack];
+    if (filename) {
+      const src = path.join(distDir, filename);
+      const dst = path.join(cwd, '.ai-standards', `PROJECT_${stack.toUpperCase().replace('-', '_')}.md`);
+      
+      if (exists(src)) {
+        mkdirp(path.dirname(dst));
+        fs.copyFileSync(src, dst);
+        console.log(`✓ Project context → .ai-standards/${path.basename(dst)} (${stack})`);
+        written = true;
+      }
+    }
+  });
+  
+  if (!written) {
+    console.log('⚠ No project templates found. Run "ai bootstrap --user" first.');
+  }
+}
+
 function updateCommand() {
   banner();
   console.log('Updating AI standards from source...\n');
@@ -303,12 +354,14 @@ function printCommand(target: string) {
 }
 
 // Main CLI logic
-const { cmd, flags } = parseArgv();
+async function main() {
+  const { cmd, flags } = parseArgv();
 
-switch(cmd) {
+  switch(cmd) {
   case 'bootstrap':
     if (flags.user) {
       bootstrapUser();
+      await checkAndNotifyUpdates();
     } else {
       banner();
       console.log('Usage: ai bootstrap --user');
@@ -324,6 +377,9 @@ switch(cmd) {
     
     // Run build to generate dist files
     run(path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]):/, '$1:')), './build.js'), []);
+    
+    // Check for updates after sync completion
+    await checkAndNotifyUpdates();
     
     // Write to project locations as requested
     if (flags['cursor-here']) {
@@ -341,11 +397,14 @@ switch(cmd) {
     if (flags['opencode-here']) {
       writeOpenCodeHere(process.cwd());
     }
+    if (flags['project-context']) {
+      writeProjectContextHere(process.cwd());
+    }
     
     if (!flags['cursor-here'] && !flags['warp-here'] && !flags['gemini-here'] && 
-        !flags['copilot-here'] && !flags['opencode-here']) {
+        !flags['copilot-here'] && !flags['opencode-here'] && !flags['project-context']) {
       console.log('\n✓ Sync complete. Files generated in ~/.ai-standards/dist/');
-      console.log('Use --cursor-here, --warp-here, --gemini-here, --copilot-here, --opencode-here to write to project.');
+      console.log('Use --cursor-here, --warp-here, --gemini-here, --copilot-here, --opencode-here, --project-context to write to project.');
     }
     break;
     
@@ -375,6 +434,11 @@ switch(cmd) {
     run(path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]):/, '$1:')), './validate.js'), []);
     break;
     
+  case 'check-updates':
+    banner();
+    await checkAndNotifyUpdates();
+    break;
+    
   case 'help':
   case '--help':
   default:
@@ -390,6 +454,7 @@ Commands:
     --gemini-here             Write Gemini config to project
     --opencode-here           Write OpenCode agents to project
     --warp-here               Write Warp config to project
+    --project-context         Write project-specific context (auto-detected stacks)
   ai harvest [options]        Import AI bundles from dependencies
     --clean                   Clean existing deps before import
     --dry-run                 Preview without making changes
@@ -397,11 +462,17 @@ Commands:
   ai update                   Update global standards from source
   ai print --target=<target>  Print generated rules for target
   ai validate                 Check if configurations are up to date
+  ai check-updates            Check for package updates
 
 Examples:
   ai bootstrap --user
   ai harvest && ai sync --cursor-here --cursor-split
-  ai sync --copilot-here --gemini-here --opencode-here
+  ai sync --copilot-here --gemini-here --opencode-here --project-context
   ai validate
+  ai check-updates
 `);
+  }
 }
+
+// Execute main function
+main().catch(console.error);

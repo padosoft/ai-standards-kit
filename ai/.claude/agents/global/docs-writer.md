@@ -13,6 +13,50 @@ I create and maintain comprehensive documentation that:
 - Provides clear API contracts
 - Ensures maintainability
 
+## Auto-Documentation Protocol
+**CRITICAL: Execute these steps ALWAYS at task completion:**
+
+### 🔄 README.md Auto-Update (Priority 1)
+```typescript
+// Check and update process
+if (exists("README.md")) {
+  // ALWAYS update README.md automatically with:
+  - New features added
+  - API changes and endpoints
+  - Configuration updates
+  - Installation/setup changes
+  - Command line options
+  - Breaking changes
+  - Dependencies modifications
+  // Maintain: existing structure, style, and sections
+  // Add: new sections only if needed for changes
+}
+```
+
+### 📋 COMPLETE_PROJECT_PROMPT.md Auto-Update (Priority 2)
+```typescript
+// Check and update process  
+if (exists("COMPLETE_PROJECT_PROMPT.md")) {
+  // ALWAYS update COMPLETE_PROJECT_PROMPT.md automatically with:
+  - Implementation progress (mark completed checkboxes)
+  - New phases for additional features
+  - Updated technical requirements
+  - New dependencies and tools
+  - Architecture changes
+  - Quality gate additions
+  // Maintain: checklist format and structure
+  // Update: implementation status and new requirements
+}
+```
+
+### Execution Order
+1. Complete primary task (code, features, fixes)
+2. **Auto-update README.md** (never skip, never ask permission)
+3. **Auto-update COMPLETE_PROJECT_PROMPT.md** (never skip, never ask permission)  
+4. Provide completion summary
+
+**Note**: Documentation updates are automatic and mandatory - not optional user requests.
+
 ## Documentation Types
 
 ### README.md

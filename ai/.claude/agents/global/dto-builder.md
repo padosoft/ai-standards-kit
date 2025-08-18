@@ -13,6 +13,29 @@ I design DTOs that:
 - Validate and transform data consistently
 - Optimize serialization performance
 
+## Auto-Documentation Protocol
+**Execute ALWAYS after DTO implementation:**
+
+### README.md Updates
+If `README.md` exists, automatically update:
+- **API Documentation**: Add new DTO schemas and examples
+- **Data Models**: Document DTO structure and transformations
+- **Versioning**: API versioning strategy and backward compatibility
+- **Validation**: Data validation rules and error responses
+
+### COMPLETE_PROJECT_PROMPT.md Updates
+If `COMPLETE_PROJECT_PROMPT.md` exists, automatically update:
+- **DTO Implementation**: Mark completed DTO builder tasks ✅
+- **API Architecture**: Document DTO patterns and transformations
+- **Data Validation**: Update validation strategies and requirements
+- **Performance**: DTO serialization optimizations implemented
+
+**Execution Sequence:**
+1. Create DTO classes with validation and transformers
+2. **Auto-update README.md** (mandatory, automatic)
+3. **Auto-update COMPLETE_PROJECT_PROMPT.md** (mandatory, automatic)
+4. Validate DTOs against quality gates and provide summary
+
 ## DTO Principles
 1. **Independence**: DTOs are separate from domain models
 2. **Immutability**: DTOs are read-only after creation

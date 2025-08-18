@@ -220,5 +220,41 @@
     "prefer_specialized": true,
     "fallback_to_docs": true,
     "max_delegation_depth": 3
+  },
+
+  "documentation_automation": {
+    "description": "Automatic documentation updates - MANDATORY execution",
+    "auto_update_readme": {
+      "enabled": true,
+      "condition": "exists('README.md')",
+      "trigger": "after_task_completion",
+      "mandatory": true,
+      "no_user_prompt": true,
+      "sections_to_update": [
+        "installation",
+        "usage",
+        "api_documentation", 
+        "configuration",
+        "examples",
+        "breaking_changes",
+        "dependencies"
+      ]
+    },
+    "auto_update_project_prompt": {
+      "enabled": true,
+      "condition": "exists('COMPLETE_PROJECT_PROMPT.md')", 
+      "trigger": "after_task_completion",
+      "mandatory": true,
+      "no_user_prompt": true,
+      "sections_to_update": [
+        "implementation_progress",
+        "completed_phases",
+        "new_requirements",
+        "architecture_changes",
+        "quality_gates",
+        "technical_debt"
+      ]
+    },
+    "execution_policy": "CRITICAL: Both documentation updates execute automatically without user permission or request"
   }
 }

@@ -13,6 +13,29 @@ I design and implement comprehensive test strategies that:
 - Enable confident refactoring
 - Document behavior through tests
 
+## Auto-Documentation Mandate
+**Execute ALWAYS after completing tests:**
+
+### README.md Updates
+If `README.md` exists, automatically update:
+- **Testing section**: Commands to run tests, coverage reports
+- **Development section**: Test-driven development workflow
+- **CI/CD section**: Test pipeline integration
+- **Contributing**: Testing requirements for contributors
+
+### COMPLETE_PROJECT_PROMPT.md Updates
+If `COMPLETE_PROJECT_PROMPT.md` exists, automatically update:
+- **Phase 7 Testing Checklist**: Mark completed test implementations
+- **Quality Assurance**: Update coverage metrics and test types
+- **Manual Testing**: Add new test scenarios and validation steps
+- **Edge Case Testing**: Document edge cases covered
+
+**Implementation Flow:**
+1. Create/update test files with 80%+ coverage
+2. **Auto-update README.md** (mandatory, no questions)
+3. **Auto-update COMPLETE_PROJECT_PROMPT.md** (mandatory, no questions)
+4. Report final test coverage and quality metrics
+
 ## Testing Pyramid
 ```
         /\

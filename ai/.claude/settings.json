@@ -1,0 +1,224 @@
+{
+  "name": "ai-standards-enterprise",
+  "version": "1.0.0",
+  "description": "Enterprise quality gates and security policies for multi-stack development",
+  
+  "auto_delegate": true,
+  "enable_agents": true,
+  "context_window_optimization": true,
+  
+  "quality_gates": {
+    "database": {
+      "block_deep_offset": {
+        "enabled": true,
+        "max_offset": 1000,
+        "message": "BLOCKED: OFFSET > 1000 detected. Use keyset pagination instead."
+      },
+      "require_covered_index": {
+        "enabled": true,
+        "message": "WARNING: Query missing covered index. Add appropriate index."
+      },
+      "block_n_plus_one": {
+        "enabled": true,
+        "message": "BLOCKED: N+1 query pattern detected. Use eager loading."
+      },
+      "block_function_in_where": {
+        "enabled": true,
+        "patterns": ["CONCAT", "SUBSTRING", "DATE_FORMAT"],
+        "message": "BLOCKED: Function in WHERE clause prevents index usage."
+      }
+    },
+    
+    "php_laravel": {
+      "require_form_request": {
+        "enabled": true,
+        "message": "BLOCKED: Controller without FormRequest validation."
+      },
+      "require_policy": {
+        "enabled": true,
+        "message": "BLOCKED: Resource controller without Policy authorization."
+      },
+      "require_route_middleware": {
+        "enabled": true,
+        "required": ["auth", "throttle"],
+        "message": "BLOCKED: Route missing required middleware."
+      },
+      "require_dto": {
+        "enabled": true,
+        "message": "WARNING: API response without DTO transformation."
+      }
+    },
+    
+    "typescript_hono": {
+      "require_zod_validation": {
+        "enabled": true,
+        "message": "BLOCKED: Handler without Zod schema validation."
+      },
+      "require_error_boundary": {
+        "enabled": true,
+        "message": "BLOCKED: Route without error boundary."
+      },
+      "require_cors_headers": {
+        "enabled": true,
+        "message": "BLOCKED: API route missing CORS configuration."
+      },
+      "require_cache_headers": {
+        "enabled": true,
+        "message": "WARNING: GET endpoint without cache headers."
+      }
+    },
+    
+    "cloudflare_workers": {
+      "require_security_headers": {
+        "enabled": true,
+        "headers": ["X-Content-Type-Options", "X-Frame-Options", "CSP"],
+        "message": "BLOCKED: Response missing security headers."
+      },
+      "require_cache_strategy": {
+        "enabled": true,
+        "message": "WARNING: No cache strategy defined for hot path."
+      },
+      "monitor_cpu_limits": {
+        "enabled": true,
+        "message": "WARNING: Approaching CPU time limits."
+      },
+      "require_rate_limiting": {
+        "enabled": true,
+        "message": "BLOCKED: Endpoint without rate limiting."
+      }
+    },
+    
+    "react_native": {
+      "require_accessibility": {
+        "enabled": true,
+        "message": "BLOCKED: Component missing accessibility props."
+      },
+      "require_memoization": {
+        "enabled": true,
+        "message": "WARNING: Expensive computation without memoization."
+      },
+      "require_error_boundary": {
+        "enabled": true,
+        "message": "BLOCKED: Screen without error boundary."
+      },
+      "require_offline_support": {
+        "enabled": true,
+        "message": "WARNING: Network request without offline handling."
+      }
+    },
+    
+    "logging": {
+      "block_pii": {
+        "enabled": true,
+        "patterns": ["email", "password", "ssn", "credit_card", "phone"],
+        "message": "BLOCKED: PII detected in log statement."
+      },
+      "require_correlation_id": {
+        "enabled": true,
+        "message": "WARNING: Log entry without correlation ID."
+      },
+      "require_structured": {
+        "enabled": true,
+        "message": "WARNING: Unstructured log format. Use JSON."
+      }
+    },
+    
+    "testing": {
+      "require_test_coverage": {
+        "enabled": true,
+        "min_coverage": 80,
+        "message": "BLOCKED: Test coverage below 80%."
+      },
+      "require_test_for_new_code": {
+        "enabled": true,
+        "message": "BLOCKED: New file without corresponding test."
+      },
+      "require_data_provider": {
+        "enabled": true,
+        "message": "WARNING: Test without data provider for edge cases."
+      }
+    },
+    
+    "security": {
+      "block_hardcoded_secrets": {
+        "enabled": true,
+        "message": "BLOCKED: Hardcoded secret detected. Use environment variables."
+      },
+      "require_input_validation": {
+        "enabled": true,
+        "message": "BLOCKED: User input without validation."
+      },
+      "require_output_encoding": {
+        "enabled": true,
+        "message": "WARNING: Output without proper encoding."
+      },
+      "block_unsafe_regex": {
+        "enabled": true,
+        "message": "BLOCKED: ReDoS vulnerable regex pattern."
+      }
+    },
+    
+    "general": {
+      "block_todo_without_issue": {
+        "enabled": true,
+        "message": "BLOCKED: TODO comment without issue reference."
+      },
+      "require_return_types": {
+        "enabled": true,
+        "message": "WARNING: Function without explicit return type."
+      },
+      "block_else_after_return": {
+        "enabled": true,
+        "message": "Style: Remove unnecessary else after return."
+      },
+      "require_immutability": {
+        "enabled": true,
+        "message": "WARNING: Mutable operation on shared state."
+      }
+    }
+  },
+  
+  "denylist": {
+    "patterns": [
+      "*.env",
+      "*.key",
+      "*.pem",
+      "*.p12",
+      "*secret*",
+      "*password*",
+      "id_rsa*"
+    ],
+    "message": "Access to sensitive file blocked by security policy."
+  },
+  
+  "performance": {
+    "warn_array_merge_in_loop": true,
+    "warn_synchronous_io": true,
+    "warn_unbounded_growth": true,
+    "prefer_streaming": true,
+    "prefer_pagination": true
+  },
+  
+  "tools": {
+    "allowed": [
+      "Read",
+      "Write",
+      "Edit",
+      "MultiEdit",
+      "Bash",
+      "Grep",
+      "Glob",
+      "LS",
+      "Task"
+    ],
+    "restricted": [],
+    "denied": []
+  },
+  
+  "delegation": {
+    "auto_route": true,
+    "prefer_specialized": true,
+    "fallback_to_docs": true,
+    "max_delegation_depth": 3
+  }
+}

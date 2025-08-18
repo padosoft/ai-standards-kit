@@ -1,31 +1,69 @@
-
 copilot:
   outputs:
     - path: "~/.ai-standards/dist/COPILOT_RULES.md"
       mode: merge
       includes:
         - ai/docs/standards/global/**
+        - ai/docs/standards/php-laravel/**
+        - ai/docs/standards/ts-hono/**
+        - ai/docs/standards/cf-workers/**
+        - ai/docs/standards/react-native/**
+      header_template: "adapters/templates/copilot_header.md"
+      footer_template: "adapters/templates/copilot_footer.md"
+
 cursor:
   outputs:
     - path: "~/.ai-standards/dist/CURSOR_RULES.md"
       mode: merge
       includes:
         - ai/docs/standards/global/**
+        - ai/docs/standards/php-laravel/**
+        - ai/docs/standards/ts-hono/**
+        - ai/docs/standards/cf-workers/**
+        - ai/docs/standards/react-native/**
+      header_template: "adapters/templates/cursor_header.md"
+      footer_template: "adapters/templates/cursor_footer.md"
+
 gemini:
   outputs:
     - path: "~/.ai-standards/dist/GEMINI_SYSTEM.md"
       mode: merge
       includes:
         - ai/docs/standards/global/**
+        - ai/docs/standards/php-laravel/**
+        - ai/docs/standards/ts-hono/**
+        - ai/docs/standards/cf-workers/**
+        - ai/docs/standards/react-native/**
+      header_template: "adapters/templates/gemini_header.md"
+
+opencode:
+  outputs:
+    - path: "~/.ai-standards/dist/OPENCODE_AGENTS.md"
+      mode: merge
+      includes:
+        - ai/docs/standards/global/**
+        - ai/docs/standards/php-laravel/**
+        - ai/docs/standards/ts-hono/**
+        - ai/docs/standards/cf-workers/**
+        - ai/docs/standards/react-native/**
+
 warp:
   outputs:
     - path: "~/.ai-standards/dist/WARP.md"
       mode: merge
       includes:
         - ai/docs/standards/global/**
+        - ai/docs/standards/php-laravel/**
+        - ai/docs/standards/ts-hono/**
+        - ai/docs/standards/cf-workers/**
+        - ai/docs/standards/react-native/**
+      header_template: "adapters/templates/warp_header.md"
+      footer_template: "adapters/templates/warp_footer.md"
+
 warp-global:
   outputs:
     - path: "~/.ai-standards/dist/WARP_GLOBAL.md"
       mode: merge
       includes:
         - ai/docs/standards/global/**
+      header_template: "adapters/templates/warp_global_header.md"

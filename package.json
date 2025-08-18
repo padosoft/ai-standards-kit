@@ -1,12 +1,45 @@
 {
   "name": "@padosoft/ai-standards",
-  "version": "0.7.0",
+  "version": "1.0.0",
+  "description": "Enterprise AI Engineering Standards & Agents toolkit for multi-stack development",
   "type": "module",
   "bin": {
     "ai-standards": "dist/sync/cli.js",
     "ai": "dist/sync/cli.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "postinstall": "npm run build",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "fast-glob": "^3.3.2",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
+  },
+  "keywords": [
+    "ai",
+    "claude",
+    "copilot",
+    "cursor",
+    "gemini",
+    "opencode",
+    "standards",
+    "enterprise",
+    "agents",
+    "multi-stack"
+  ],
+  "author": "Padosoft",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/padosoft/ai-standards-kit.git"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

@@ -36,18 +36,20 @@ ai-standards-kit/                           # Root del pacchetto npm
 ├─ Requisiti-creazione-progetto.md          # Analisi e requisiti originali
 ├─ .idea/                                   # IntelliJ IDEA configuration
 ├─ src/                                     # Codice TypeScript sorgente
-│  └─ sync/                                 # Logica di sincronizzazione e CLI
-│     ├─ cli.ts                             # Main CLI con tutti i comandi
-│     ├─ build.ts                           # Export builder per tutti i target
-│     ├─ harvest.ts                         # Scansione pacchetti npm/composer
-│     ├─ validate.ts                        # Validazione configurazioni
-│     └─ utils.ts                           # Utility comuni (parsing, paths)
+│  ├─ sync/                                 # Logica di sincronizzazione e CLI
+│  │  ├─ cli.ts                             # Main CLI con tutti i comandi
+│  │  ├─ build.ts                           # Export builder per tutti i target
+│  │  ├─ harvest.ts                         # Scansione pacchetti npm/composer
+│  │  ├─ validate.ts                        # Validazione configurazioni
+│  │  └─ utils.ts                           # Utility comuni (parsing, paths)
+│  └─ example-command.ts                    # Esempio di CLI creato con node-command-builder
 ├─ dist/                                    # JavaScript compilato (output tsc)
-│  └─ sync/                                 # CLI compilati
-│     ├─ cli.js                             # Entry point principale
-│     ├─ build.js                           # Builder compilato
-│     ├─ harvest.js                         # Harvest compilato
-│     └─ validate.js                        # Validator compilato
+│  ├─ sync/                                 # CLI compilati
+│  │  ├─ cli.js                             # Entry point principale
+│  │  ├─ build.js                           # Builder compilato
+│  │  ├─ harvest.js                         # Harvest compilato
+│  │  └─ validate.js                        # Validator compilato
+│  └─ example-command.js                    # Esempio CLI compilato
 ├─ ai/                                      # SSOT: Single Source of Truth per guide e agenti
 │  ├─ .claude/                              # Configurazione Claude (SSOT)
 │  │  ├─ settings.json                      # Quality gates e policy enterprise
@@ -56,7 +58,10 @@ ai-standards-kit/                           # Root del pacchetto npm
 │  │        ├─ task-router.md               # Router multi-stack intelligente
 │  │        ├─ docs-writer.md               # Agente: documentazione (README, ADR, RFC)
 │  │        ├─ test-writer.md               # Agente: test strategy (unit/integration/E2E)
-│  │        └─ dto-builder.md               # Agente: DTO e mapper enterprise
+│  │        ├─ dto-builder.md               # Agente: DTO e mapper enterprise
+│  │        ├─ code-reviewer.md             # Agente: security, performance, maintainability
+│  │        ├─ adapter-builder.md           # Agente: crea adapter per nuovi AI tools
+│  │        └─ node-command-builder.md      # Agente: CLI Node.js professionali con logging
 │  └─ docs/                                 # Guide tecniche dettagliate
 │     └─ standards/                         # Standard per categoria/stack
 │        ├─ global/                         # Regole globali valide ovunque

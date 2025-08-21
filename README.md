@@ -95,7 +95,14 @@ ai-standards-kit/                           # Root del pacchetto npm
 │  └─ docs/                                 # Guide tecniche dettagliate
 │     └─ standards/                         # Standard per categoria/stack
 │        ├─ global/                         # Regole globali valide ovunque
-│        │  ├─ style.md                     # Code style, naming, patterns
+│        │  ├─ engineering-principles.md    # Principi architetturali enterprise
+│        │  ├─ coding-guidelines.md         # Code style, naming, patterns universali
+│        │  ├─ security-standards.md        # Standard sicurezza enterprise
+│        │  ├─ performance-rules.md         # Regole performance globali
+│        │  ├─ quality-gates.md             # Quality gates e validazioni
+│        │  ├─ architecture-patterns.md     # Pattern architetturali enterprise
+│        │  ├─ auto-documentation.md        # Regole auto-documentazione codice
+│        │  ├─ stack-detection.md           # Algoritmi rilevamento stack
 │        │  ├─ logging.md                   # Structured logging, correlation IDs
 │        │  ├─ comments.md                  # Meaningful comments, TODO policies
 │        │  ├─ dto.md                       # Data Transfer Objects standards
@@ -104,7 +111,12 @@ ai-standards-kit/                           # Root del pacchetto npm
 │        │  ├─ cache.md                     # Caching strategies, invalidation
 │        │  ├─ ci.md                        # CI/CD pipelines, quality gates
 │        │  └─ shell-snippets.md            # Common shell patterns
+│        ├─ bash/                           # Standard Bash Scripting
+│        │  ├─ bash-coding-guidelines.md    # Comprehensive Bash coding standards
+│        │  ├─ bash-security-standards.md   # Shell security best practices
+│        │  └─ bash-performance-rules.md    # Shell performance optimization
 │        ├─ php-laravel/                    # Standard specifici Laravel
+│        │  ├─ php-laravel-coding-guidelines.md # Comprehensive Laravel patterns (DTO, Repository, Factory)
 │        │  ├─ routes.md                    # Routing, middleware, versioning
 │        │  ├─ controllers.md               # Slim controllers, FormRequest, Policies
 │        │  ├─ errors.md                    # Exception handling, logging
@@ -115,6 +127,7 @@ ai-standards-kit/                           # Root del pacchetto npm
 │        │  ├─ migrations.md                # Database migrations, expand/contract
 │        │  └─ api-doc.md                   # OpenAPI documentation
 │        ├─ ts-hono/                        # Standard TypeScript + Hono
+│        │  ├─ ts-hono-coding-guidelines.md # Comprehensive TypeScript/Hono patterns with SOLID principles
 │        │  ├─ routing.md                   # Hono routing patterns
 │        │  ├─ handlers.md                  # Async handlers, error boundaries
 │        │  ├─ errors.md                    # Error handling, status codes
@@ -127,6 +140,7 @@ ai-standards-kit/                           # Root del pacchetto npm
 │        │  ├─ limits.md                    # CPU time, memory, subrequests
 │        │  └─ observability.md             # Logging, tracing, analytics
 │        └─ react-native/                   # Standard React Native
+│           ├─ react-native-coding-guidelines.md # Comprehensive React Native patterns and best practices
 │           ├─ architecture.md              # Navigation, state, modular structure
 │           ├─ performance.md               # Memoization, FlatList, animations
 │           ├─ accessibility.md             # A11y checklist, screen readers
@@ -150,6 +164,41 @@ ai-standards-kit/                           # Root del pacchetto npm
 - Gli agenti Claude **non duplicano** regole: leggono `global/` + guida dello **stack** + micro‑guida del **task**
 - Il **task-router** decide a chi delegare o carica **solo** i Markdown necessari (**contesto corto**)
 - **Quality Gates** in `.claude/settings.json` bloccano PR non conformi (es. PII nei log, OFFSET profondi, controller senza FormRequest)
+
+### 🔄 Approccio Consolidato vs Micro-Guide
+
+**Evoluzione architetturale recente:** Abbiamo adottato un approccio **consolidato** per evitare la frammentazione di 1000+ micro-guide:
+
+#### Stack-Specific Comprehensive Guidelines
+- **`bash-coding-guidelines.md`** - Include sicurezza, performance e best practices Bash in un unico file
+- **`php-laravel-coding-guidelines.md`** - Include DTO, Repository, Factory, Action patterns + Laravel specifics
+- **`ts-hono-coding-guidelines.md`** - Include SOLID principles, core patterns, Hono specifics + performance
+- **`react-native-coding-guidelines.md`** - Include architecture, state management, navigation patterns
+
+#### Vantaggi dell'Approccio Consolidato
+✅ **Contesto coerente**: Tutti i pattern di uno stack in un posto  
+✅ **Meno frammentazione**: No 50+ micro-file per stack  
+✅ **Riferimenti interni**: Pattern correlati nello stesso documento  
+✅ **Maintenance semplificato**: Un file per stack vs decine di micro-guide  
+✅ **Claude-friendly**: File completi ma non eccessivamente lunghi  
+
+#### Gerarchia degli Standard
+```
+Global Standards (sempre inclusi)
+├─ engineering-principles.md    → Principi universali
+├─ security-standards.md        → Sicurezza enterprise
+├─ performance-rules.md         → Performance globali
+└─ quality-gates.md            → Validazioni
+
+Stack-Specific Guidelines (include tutto per lo stack)
+├─ bash-coding-guidelines.md    → Shell scripting completo
+├─ php-laravel-coding-guidelines.md → Laravel enterprise completo  
+├─ ts-hono-coding-guidelines.md → TypeScript/Hono completo
+└─ react-native-coding-guidelines.md → RN completo
+
+Task-Specific Micro-Guides (quando necessario)
+└─ routes.md, controllers.md, etc. → Task specifici quando servono
+```
 
 ---
 

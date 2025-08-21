@@ -122,6 +122,57 @@ Create a **complete enterprise AI standards toolkit** named `@padosoft/ai-standa
   - **react-native/** folder with: architecture.md, performance.md, accessibility.md, testing.md
   - Each file with comprehensive enterprise patterns, good/bad examples, anti-patterns
 
+### Phase 3.5: Stack-Specific Consolidated Guidelines (NEW APPROACH)
+- [ ] **3.5.1** Create Comprehensive Bash Guidelines
+  - **bash-coding-guidelines.md**: Complete Bash scripting standards including:
+    - Error handling patterns (`set -euo pipefail`)
+    - Security best practices (input validation, safe file operations)
+    - Performance optimization (built-ins vs external commands)
+    - Script organization and modularity
+    - Shell-specific patterns and anti-patterns
+  - **bash-security-standards.md**: Shell-specific security practices
+  - **bash-performance-rules.md**: Shell performance optimization patterns
+
+- [ ] **3.5.2** Create Comprehensive PHP/Laravel Guidelines  
+  - **php-laravel-coding-guidelines.md**: Complete Laravel enterprise patterns including:
+    - DTO (Data Transfer Object) patterns with readonly classes
+    - Repository pattern implementation with interfaces
+    - Factory pattern for complex object creation
+    - Action pattern for business logic encapsulation
+    - Service pattern with dependency injection
+    - Laravel-specific best practices (FormRequest, Policies, Eloquent)
+    - Security patterns and validation
+    - Performance optimization patterns
+    - Complete examples for each pattern with good/bad comparisons
+
+- [ ] **3.5.3** Create Comprehensive TypeScript/Hono Guidelines
+  - **ts-hono-coding-guidelines.md**: Complete TypeScript/Hono patterns including:
+    - Core programming principles (return early pattern, pure functions)
+    - SOLID principles implementation with TypeScript
+    - Hono application structure and middleware chains
+    - Type-safe routing with Zod validation
+    - Error handling and logging patterns
+    - Performance optimization techniques
+    - Security best practices
+    - Testing patterns with comprehensive examples
+
+- [ ] **3.5.4** Create Comprehensive React Native Guidelines
+  - **react-native-coding-guidelines.md**: Complete React Native patterns including:
+    - Component architecture and organization
+    - State management patterns (Context, Zustand, Redux)
+    - Navigation best practices
+    - Performance optimization (memoization, FlatList, animations)
+    - Accessibility implementation
+    - Platform-specific code organization
+    - Testing strategies
+    - Security considerations for mobile apps
+
+- [ ] **3.5.5** Integration and Reference Architecture
+  - Remove/consolidate duplicate ts-hono/style.md content into main coding guidelines
+  - Update task-router.md to reference comprehensive guidelines instead of micro-guides
+  - Ensure all agents reference the consolidated approach
+  - Update global standards to work with stack-specific comprehensive guidelines
+
 ### Phase 4: Export Configuration
 - [ ] **4.1** Create `adapters/config/targets.yml`
   - Target configurations for: copilot, cursor, gemini, opencode, warp, warp-global, windsurf, augment
@@ -312,6 +363,29 @@ Create a **complete enterprise AI standards toolkit** named `@padosoft/ai-standa
 - **Single Binary**: One CLI handles all operations with subcommands
 - **Home Directory**: Global configs in `~/.claude/`, `~/.ai-standards/`, etc.
 - **Namespace Isolation**: Harvested dependencies in `_deps/<namespace>/`
+- **Consolidated Approach**: Comprehensive stack-specific guidelines instead of fragmented micro-guides
+
+### Architectural Evolution: Consolidated vs Micro-Guide Approach
+**CRITICAL CHANGE**: The system has evolved from a micro-guide fragmented approach to a **consolidated comprehensive approach**:
+
+#### Original Micro-Guide Approach (Deprecated)
+- ❌ 1000+ micro-files per stack (routes.md, controllers.md, validation.md, etc.)
+- ❌ Fragmented context across multiple small files
+- ❌ Maintenance complexity with inter-file dependencies
+- ❌ Difficult navigation for developers
+
+#### New Consolidated Approach (Current)
+- ✅ **One comprehensive coding-guidelines.md per stack** (bash, php-laravel, ts-hono, react-native)
+- ✅ **Complete patterns in context** (DTO + Repository + Factory + Action patterns in one place)
+- ✅ **Coherent documentation** with internal references and examples
+- ✅ **Maintainable architecture** with clear separation between global and stack-specific
+- ✅ **Claude-friendly** file sizes that provide complete context without being overwhelming
+
+#### Implementation Requirements
+1. **Stack Detection**: Must detect and apply appropriate comprehensive guidelines
+2. **Reference Architecture**: Agents reference consolidated files instead of micro-guides
+3. **Backward Compatibility**: Micro-guides remain for specific task delegation when needed
+4. **Content Integration**: Existing content (like ts-hono/style.md) integrated into comprehensive guidelines
 
 ### Key Patterns
 - **SSOT (Single Source of Truth)**: All standards maintained in `ai/` folder

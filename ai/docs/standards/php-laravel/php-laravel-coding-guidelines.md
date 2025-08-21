@@ -1296,6 +1296,116 @@ final class CancelOrderAction
 }
 ```
 
+## Laravel-Specific Areas (References to Specialized Guides)
+
+> **Note**: The following sections provide quick references and essential patterns. For complete implementation details and advanced patterns, see the referenced specialized guides.
+
+### Routes and Routing
+> **📋 Complete Reference**: `@php-laravel/routes.md`
+>
+> **Quick Patterns:**
+> - Use route model binding for automatic model resolution
+> - Group routes with common middleware and prefixes
+> - Version APIs with path prefixes (`/api/v1/`, `/api/v2/`)
+> - Apply rate limiting to public endpoints
+
+```php
+// ✅ Good - Route organization
+Route::prefix('api/v1')->middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
+    Route::get('orders', [OrderController::class, 'index']);
+    Route::post('orders', [OrderController::class, 'store']);
+    Route::get('orders/{order}', [OrderController::class, 'show']); // Route model binding
+});
+```
+
+### Controller Best Practices
+> **📋 Complete Reference**: `@php-laravel/controllers.md`
+>
+> **Quick Patterns:**
+> - Keep controllers slim - delegate to services/actions
+> - Use FormRequest for validation
+> - Return Resources for API responses
+> - Single responsibility per controller method
+
+```php
+// ✅ Good - Slim controller with dependencies
+final class OrderController extends Controller
+{
+    public function __construct(private readonly CreateOrderAction $createOrderAction) {}
+    
+    public function store(CreateOrderRequest $request): JsonResponse
+    {
+        $dto = CreateOrderDTO::fromRequest($request->validated());
+        $order = $this->createOrderAction->execute($dto);
+        
+        return response()->json(new OrderResource($order), 201);
+    }
+}
+```
+
+### Error Handling and Exceptions
+> **📋 Complete Reference**: `@php-laravel/errors.md`
+>
+> **Quick Patterns:**
+> - Use custom exceptions for domain errors
+> - Implement global exception handler
+> - Log errors with proper context
+> - Return consistent error responses
+
+### Form Validation and Requests
+> **📋 Complete Reference**: `@php-laravel/validation.md`
+>
+> **Quick Patterns:**
+> - Create FormRequest classes for complex validation
+> - Use custom validation rules for business logic
+> - Sanitize input data appropriately
+> - Provide meaningful error messages
+
+### Database Queries and Optimization
+> **📋 Complete Reference**: `@php-laravel/queries.md`
+>
+> **Quick Patterns:**
+> - Use eager loading to prevent N+1 queries
+> - Select only needed columns
+> - Use database transactions for data consistency
+> - Implement proper indexing strategies
+
+### Eloquent Models and Relationships
+> **📋 Complete Reference**: `@php-laravel/eloquent.md`
+>
+> **Quick Patterns:**
+> - Define relationships with proper return types
+> - Use scopes for reusable query logic
+> - Implement proper mutators and accessors
+> - Use model events for lifecycle hooks
+
+### Artisan Commands and Jobs
+> **📋 Complete Reference**: `@php-laravel/commands.md`
+>
+> **Quick Patterns:**
+> - Create commands for maintenance tasks
+> - Use queue jobs for time-consuming operations
+> - Implement proper error handling and retries
+> - Add progress tracking for long-running commands
+
+### Database Migrations
+> **📋 Complete Reference**: `@php-laravel/migrations.md`
+>
+> **Quick Patterns:**
+> - Use expand/contract pattern for schema changes
+> - Create proper indexes for query performance
+> - Handle rollbacks appropriately
+> - Use database seeders for test data
+
+### API Documentation
+> **📋 Complete Reference**: `@php-laravel/api-doc.md`
+>
+> **Quick Patterns:**
+> - Use OpenAPI/Swagger for API documentation
+> - Document all endpoints with request/response examples
+> - Include error response documentation
+> - Keep documentation in sync with code changes
+
 ## Final Checklist
 
 ### Laravel Code Quality Checklist
@@ -1314,3 +1424,9 @@ final class CancelOrderAction
 - [ ] Caching implemented for expensive operations
 - [ ] Queues used for time-consuming tasks
 - [ ] Middleware used for cross-cutting concerns
+
+### Reference Guide Integration
+- [ ] Core patterns documented in this comprehensive guide
+- [ ] Specialized areas reference micro-guides for deep implementation
+- [ ] Task-specific work uses appropriate micro-guide
+- [ ] Complete feature implementation uses comprehensive + specific guides

@@ -76,32 +76,101 @@ The stack detection guide provides robust detection for:
 - **Release**: `@rn-release-assistant` → signing, OTA, stores
 
 ### Global (All Stacks)
+- **adapter-builder**: `@adapter-builder` → Researches and creates adapters for new AI tools for this package only
 - **Documentation**: `@docs-writer` → README, ADR, RFC, inline docs
-- **Testing**: `@test-writer` → unit, integration, E2E strategies
-- **DTO**: `@dto-builder` → transformers, serializers, versioning
 - **Logging**: `@log-auditor` → structured, levels, correlation IDs
 - **Comments**: `@comment-linter` → meaningful, TODO+issue, no noise
 - **Review**: `@code-reviewer` → security, performance, maintainability
 
+## Dynamic Granularity Selection Strategy
+
+I choose the optimal granularity based on task complexity and scope:
+
+### 1. Comprehensive Guidelines (Full Feature Implementation)
+**Use when**: Complete features, architecture changes, or comprehensive implementation
+**Strategy**: Load stack-specific comprehensive coding guidelines + global standards
+**Files to Load**:
+- `/docs/standards/global/engineering-principles.md`
+- `/docs/standards/global/coding-guidelines.md` 
+- `/docs/standards/global/security-standards.md`
+- `/docs/standards/global/performance-rules.md`
+- `/docs/standards/{stack}/{stack}-coding-guidelines.md` (e.g., `php-laravel-coding-guidelines.md`)
+
+**Example Tasks**:
+- "Implement complete order management system with DTO, Repository, Actions"
+- "Create user authentication system with all security patterns" 
+- "Build API endpoints with full validation and error handling"
+
+### 2. Specific Micro-Guide (Targeted Implementation)
+**Use when**: Focused task on one specific area
+**Strategy**: Load global standards + specific micro-guide only
+**Files to Load**:
+- Global standards (as needed)
+- Specific micro-guide (e.g., `routes.md`, `validation.md`)
+
+**Example Tasks**:
+- "Fix this specific route validation issue"
+- "Add new migration for user table"
+- "Update error handling in this controller"
+
+### 3. Hybrid Approach (Reference-Based)
+**Use when**: Task needs overview + deep specifics
+**Strategy**: Load comprehensive guide for context, then specific micro-guide for implementation
+**Files to Load**:
+- Comprehensive coding guidelines (for context and patterns)
+- Specific micro-guides (for deep implementation details)
+
+**Example Tasks**:
+- "Implement new payment processing with all Laravel patterns"
+- "Add complex validation with custom rules and error handling"
+
+### Selection Algorithm
+```typescript
+function selectGranularity(task: string, scope: TaskScope): LoadingStrategy {
+  // 1. Analyze task complexity and scope
+  const complexity = assessComplexity(task);
+  const affectedAreas = identifyAffectedAreas(task);
+  
+  if (complexity === 'HIGH' || affectedAreas.length > 2) {
+    return 'COMPREHENSIVE'; // Full coding guidelines + global
+  }
+  
+  if (complexity === 'LOW' && affectedAreas.length === 1) {
+    return 'SPECIFIC'; // Single micro-guide + minimal global
+  }
+  
+  return 'HYBRID'; // Comprehensive for context + specific for details
+}
+```
+
 ## Fallback Strategy
 When no specific agent exists:
-1. `Glob` for `docs/standards/{global,stack}/*.md`
-2. `Read` only the specific micro-guide
-3. Apply checklist and patterns
-4. Validate against quality gates
+1. **Apply granularity selection** based on task scope
+2. `Glob` for appropriate `docs/standards/{global,stack}/*.md` files
+3. `Read` selected comprehensive or micro-guides
+4. Apply patterns and validate against quality gates
 
 ## Execution Flow
 ```mermaid
 graph TD
     A[Receive Task] --> B{Detect Stack}
-    B --> C{Agent Exists?}
-    C -->|Yes| D[Delegate to Agent]
-    C -->|No| E[Load Micro-Guide]
-    D --> F[Collect Results]
-    E --> F
-    F --> G{Quality Gates}
-    G -->|Pass| H[Deliver Output]
-    G -->|Fail| I[Block & Report]
+    B --> C[Assess Task Complexity]
+    C --> D{Agent Exists?}
+    D -->|Yes| E[Delegate to Agent]
+    D -->|No| F[Select Granularity]
+    F --> G{Comprehensive?}
+    G -->|Yes| H[Load Complete Guidelines]
+    G -->|No| I{Specific?}
+    I -->|Yes| J[Load Micro-Guide]
+    I -->|No| K[Load Hybrid]
+    E --> L[Collect Results]
+    H --> L
+    J --> L
+    K --> L
+    L --> M{Quality Gates}
+    M -->|Pass| N[Auto-Document]
+    M -->|Fail| O[Block & Report]
+    N --> P[Deliver Output]
 ```
 
 ## Output Standards
@@ -166,7 +235,7 @@ I enforce ALL gates from `.claude/settings.json`:
 
 I will:
 1. Detect Laravel via composer.json and artisan
-2. Route to: routes-architect → controller-builder → sql-optimizer → dto-builder → migration-planner → test-writer
+2. Route to: routes-architect → controller-builder → sql-optimizer → migration-planner → test-writer
 3. Each agent reads only its specific guides
 4. Validate all outputs against quality gates
 5. Deliver complete, production-ready patches

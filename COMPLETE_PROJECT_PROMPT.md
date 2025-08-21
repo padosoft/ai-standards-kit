@@ -272,6 +272,16 @@ Create a **complete enterprise AI standards toolkit** named `@padosoft/ai-standa
   - [ ] Example command test mode: `node dist/example-command.js process --test --verbose`
   - [ ] Example command shows proper logging with icons and timestamps
 
+- [ ] **7.1.5** Hybrid Approach Testing
+  - [ ] **Reference Integration**: Comprehensive guidelines contain `@stack/file.md` references
+  - [ ] **Task-Router Granularity**: Verify task-router selects appropriate granularity
+    - [ ] Complex tasks load comprehensive guidelines + global standards
+    - [ ] Simple tasks load specific micro-guides only
+    - [ ] Hybrid tasks load comprehensive + specific micro-guides
+  - [ ] **Export Integration**: Generated files include both comprehensive + micro-guides when relevant
+  - [ ] **Backward Compatibility**: All existing micro-guides still work independently
+  - [ ] **Evolution Tracking**: System tracks which micro-guides are used together (for future consolidation)
+
 - [ ] **7.2** Edge Case Testing
   - [ ] Handle missing home directories gracefully
   - [ ] Handle permission errors appropriately
@@ -381,11 +391,49 @@ Create a **complete enterprise AI standards toolkit** named `@padosoft/ai-standa
 - ✅ **Maintainable architecture** with clear separation between global and stack-specific
 - ✅ **Claude-friendly** file sizes that provide complete context without being overwhelming
 
-#### Implementation Requirements
-1. **Stack Detection**: Must detect and apply appropriate comprehensive guidelines
-2. **Reference Architecture**: Agents reference consolidated files instead of micro-guides
-3. **Backward Compatibility**: Micro-guides remain for specific task delegation when needed
-4. **Content Integration**: Existing content (like ts-hono/style.md) integrated into comprehensive guidelines
+#### Hybrid Strategy Implementation Requirements
+1. **Dynamic Granularity Selection**: Task-router must choose between comprehensive, specific, or hybrid approach
+2. **Reference Architecture**: Comprehensive guidelines reference micro-guides with `@stack/file.md` syntax  
+3. **Backward Compatibility**: All existing micro-guides maintained and enhanced for specialized use cases
+4. **Content Integration**: Existing content integrated into comprehensive with proper references
+5. **Evolution Strategy**: Monitor usage patterns to guide future consolidation/extraction decisions
+
+#### Task-Router Granularity Logic
+The system must implement intelligent granularity selection:
+
+```typescript
+// High complexity or multiple areas → COMPREHENSIVE
+- "Implement complete order management system with DTO, Repository, Actions"
+- "Create user authentication with all security patterns"
+→ Load: engineering-principles.md + coding-guidelines.md + {stack}-coding-guidelines.md
+
+// Low complexity, single area → SPECIFIC  
+- "Fix this route validation issue"
+- "Add migration for user table"
+→ Load: global essentials + specific micro-guide only
+
+// Medium complexity, context needed → HYBRID
+- "Implement payment processing with Laravel patterns"  
+- "Add complex validation with custom rules"
+→ Load: comprehensive for context + specific micro-guides for implementation
+```
+
+#### Reference Integration Patterns
+All comprehensive guidelines must include reference sections:
+
+```markdown
+## Laravel-Specific Areas (References to Specialized Guides)
+
+### Routes and Routing
+> **📋 Complete Reference**: `@php-laravel/routes.md`
+>
+> **Quick Patterns:**
+> - Essential patterns and examples
+> - Most common use cases
+> [Quick implementation examples]
+
+### [Other sections with same pattern...]
+```
 
 ### Key Patterns
 - **SSOT (Single Source of Truth)**: All standards maintained in `ai/` folder
@@ -439,13 +487,53 @@ Before considering the project complete, verify:
 
 ---
 
-**FINAL NOTE**: This is an enterprise-grade toolkit. Every component must be production-ready, thoroughly tested, and properly documented. The implementation should handle edge cases gracefully and provide clear guidance to developers at every step.
+**FINAL NOTE**: This is an enterprise-grade toolkit with a **hybrid architecture** that evolved from lessons learned in production usage. Every component must be production-ready, thoroughly tested, and properly documented. The implementation should handle edge cases gracefully and provide clear guidance to developers at every step.
+
+## 🎯 **Hybrid Architecture Success Criteria**
+
+The system must successfully implement the **3-tier granularity approach**:
+
+### **📚 Tier 1: Comprehensive Guidelines** 
+- ✅ Complete stack patterns in coherent context (DTO + Repository + Factory + Action)
+- ✅ Essential for feature implementation and onboarding
+- ✅ Reference integration with micro-guides using `@stack/file.md` syntax
+- ✅ Maintained as single source of truth for core stack patterns
+
+### **🎯 Tier 2: Specialized Micro-Guides**
+- ✅ Deep implementation details and edge cases
+- ✅ Expert-maintained for specific domains
+- ✅ Referenced from comprehensive but standalone usable
+- ✅ Ideal for targeted fixes and advanced troubleshooting
+
+### **🤖 Tier 3: Dynamic Selection Intelligence**
+- ✅ Task-router chooses optimal granularity automatically
+- ✅ Context-aware loading (comprehensive vs specific vs hybrid)
+- ✅ Performance optimized for both Claude and export tools
+- ✅ Evolution tracking for future consolidation decisions
+
+## **Developer Experience Goals**
 
 When complete, developers should be able to:
-1. Install globally with one command
-2. Bootstrap their AI tools with one command  
-3. Maintain consistent enterprise standards across all supported AI tools
-4. Automatically harvest standards from their dependency packages
-5. Validate their configuration and receive actionable recommendations
 
-**Success Metric**: A developer with no prior knowledge should be able to follow the README and have a fully working enterprise AI standards setup in under 5 minutes.
+### **For Feature Development:**
+1. **Install globally** with one command
+2. **Bootstrap AI tools** with one command  
+3. **Get comprehensive guidance** for full feature implementation
+4. **Access specialized details** when needed for edge cases
+5. **Maintain consistency** across all supported AI tools
+
+### **For Standard Maintenance:**
+1. **Contribute to comprehensive** guidelines for core patterns
+2. **Maintain micro-guides** for specialized expertise  
+3. **Track evolution** patterns for consolidation opportunities
+4. **Validate integration** between comprehensive and micro-guides
+5. **Monitor usage** patterns for architectural decisions
+
+### **For AI Tool Integration:**
+1. **Automatic granularity** selection by task-router
+2. **Optimized context** loading based on task complexity
+3. **Reference navigation** between comprehensive and specific guides
+4. **Export optimization** for different AI tool capabilities
+5. **Harvest integration** from dependency packages
+
+**Success Metric**: A developer with no prior knowledge should be able to follow the README and have a fully working enterprise AI standards setup with optimal granularity selection in under 5 minutes. An expert developer should be able to contribute to either comprehensive guidelines or micro-guides without understanding the entire system architecture.

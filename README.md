@@ -24,35 +24,95 @@ Obiettivo: **DRY a strati** + **contesto minimo e mirato** + **quality gates** b
 
 ## 🎯 Come Funziona il Sistema
 
+### 🧠 Approccio Ibrido: Comprehensive + Micro-Guide
+
+Il sistema adotta una **strategia di granularità dinamica** che combina il meglio di due mondi:
+
+#### **📚 Comprehensive Guidelines** (Per Feature Complete)
+- **Un file completo per stack** con tutti i pattern principali
+- **Contesto coerente** - DTO, Repository, Factory, Action patterns nello stesso documento
+- **Esempi correlati** - Pattern che si referenziano tra loro
+- **Ideale per**: Feature complete, nuove implementazioni, onboarding
+
+#### **🎯 Micro-Guide Specializzate** (Per Task Specifici) 
+- **File focalizzati** su aspetti specifici (routes, validation, migrations)
+- **Dettagli approfonditi** e edge cases
+- **Manutenzione specializzata** da esperti di dominio
+- **Ideale per**: Fix specifici, modifiche mirate, troubleshooting
+
+#### **🤖 Selezione Automatica della Granularità**
+Il **task-router** sceglie dinamicamente:
+
+```typescript
+// Task complesso → Comprehensive Guidelines
+"Implementa sistema ordini con DTO, Repository, Actions, API"
+→ Carica: php-laravel-coding-guidelines.md + global standards
+
+// Task specifico → Micro-Guide
+"Correggi validazione in questo controller"  
+→ Carica: validation.md + global essentials
+
+// Task ibrido → Reference-Based
+"Aggiungi pagamento con tutti i pattern Laravel"
+→ Carica: comprehensive per context + payments.md per dettagli
+```
+
 ### Per Claude (Claude Code)
-Claude supporta strutture complesse e navigazione multi-file, quindi:
-- **I file restano separati** in `ai/docs/standards/` e `ai/.claude/agents/`
-- **Nessun merge necessario** - Claude naviga e legge file multipli dinamicamente
-- **CLAUDE.md generato nel progetto** quando esegui `ai sync` con le regole appropriate
-- **Agenti specializzati** delegano task specifici mantenendo contesto minimo
+Claude supporta strutture complesse e selezione dinamica:
+- **Granularità Intelligente**: Sceglie automaticamente comprehensive vs micro-guide
+- **Context Optimization**: Carica solo i file necessari per il task
+- **Reference Navigation**: Segue i `@reference` link tra comprehensive e micro-guide
+- **Quality Gates**: Applica validazioni enterprise in tempo reale
 
 ### Per Altri AI Tools (Gemini, Copilot, Cursor, etc.)
-Altri tool non supportano strutture complesse, quindi:
-- **Merge automatico** di tutti i file relevanti in un singolo file
-- **Export personalizzato** per ogni tool con header/footer specifici
-- **Inclusione automatica** di regole global + stack-specific rilevato
+Altri tool ricevono export merged ottimizzati:
+- **Merge Intelligente**: Combina comprehensive + micro-guide relevant per il progetto
+- **Stack Detection**: Include automaticamente regole global + stack-specific
+- **Template Personalizzati**: Header/footer specifici per ogni tool
+- **Single File**: Tutto in un file ottimizzato per il tool target
 
 ### Regole Global vs Stack-Specific
-- **`/docs/standards/global/`**: Principi e standard **sempre applicati** (engineering principles, security, performance)
-- **`/docs/standards/{stack}/`**: Regole specifiche per Laravel, TypeScript, Workers, etc.
-- **Auto-inclusione**: Le regole global sono **sempre incluse** in tutti gli export
-- **Stack detection**: Il sistema rileva automaticamente lo stack e include le regole appropriate
+- **`/docs/standards/global/`**: Principi universali **sempre inclusi**
+  - `engineering-principles.md` - Principi architetturali
+  - `coding-guidelines.md` - Regole universali
+  - `security-standards.md` - Standard sicurezza enterprise
+  - `performance-rules.md` - Ottimizzazioni globali
+- **`/docs/standards/{stack}/`**: Implementation comprehensive + micro-guide specializzate
+  - `{stack}-coding-guidelines.md` - **Comprehensive** con tutti i pattern
+  - `routes.md`, `validation.md`, etc. - **Micro-guide** per task specifici
 
-### Esempio Pratico
+### Esempio Pratico del Flusso Ibrido
 ```bash
-# In un progetto Laravel:
-ai sync --cursor-here
+# Feature complessa in progetto Laravel:
+"Implementa sistema autenticazione completo con 2FA"
 
-# Genera .cursor/rules/ai-standards.mdc contenente:
-# 1. Tutte le regole da /docs/standards/global/* (sempre incluse)
-# 2. Tutte le regole da /docs/standards/php-laravel/* (stack rilevato)
-# 3. Header/footer specifici per Cursor
+# Claude task-router:
+# 1. Detecta Laravel (composer.json)
+# 2. Assess complexity: HIGH (feature completa)
+# 3. Carica COMPREHENSIVE:
+#    - engineering-principles.md
+#    - security-standards.md  
+#    - php-laravel-coding-guidelines.md
+# 4. Implementa con pattern DTO + Repository + Action + Tests
+# 5. Auto-documenta in README.md
+
+# Task specifico:
+"Correggi questa validazione email"
+
+# Claude task-router:  
+# 1. Assess complexity: LOW (task specifico)
+# 2. Carica MICRO-GUIDE:
+#    - validation.md
+# 3. Applica fix mirato
 ```
+
+### Vantaggi dell'Approccio Ibrido
+✅ **Best of Both Worlds**: Overview comprehensive + dettagli specializzati  
+✅ **Context-Aware**: Carica solo quello che serve per il task  
+✅ **Scalabile**: Micro-guide crescono organicamente, comprehensive restano coerenti  
+✅ **Maintainable**: Team diversi lavorano su aree diverse  
+✅ **Performance**: Claude carica minimal context, export tools ricevono tutto insieme  
+✅ **Evolution-Friendly**: Pattern che si usano sempre insieme → merge nel comprehensive
 
 ## 📁 Struttura Cartelle
 
@@ -165,40 +225,131 @@ ai-standards-kit/                           # Root del pacchetto npm
 - Il **task-router** decide a chi delegare o carica **solo** i Markdown necessari (**contesto corto**)
 - **Quality Gates** in `.claude/settings.json` bloccano PR non conformi (es. PII nei log, OFFSET profondi, controller senza FormRequest)
 
-### 🔄 Approccio Consolidato vs Micro-Guide
+### 🔄 Evoluzione Architetturale: Da Micro-Guide a Approccio Ibrido
 
-**Evoluzione architetturale recente:** Abbiamo adottato un approccio **consolidato** per evitare la frammentazione di 1000+ micro-guide:
+**Evoluzione storica del sistema:**
 
-#### Stack-Specific Comprehensive Guidelines
-- **`bash-coding-guidelines.md`** - Include sicurezza, performance e best practices Bash in un unico file
-- **`php-laravel-coding-guidelines.md`** - Include DTO, Repository, Factory, Action patterns + Laravel specifics
-- **`ts-hono-coding-guidelines.md`** - Include SOLID principles, core patterns, Hono specifics + performance
-- **`react-native-coding-guidelines.md`** - Include architecture, state management, navigation patterns
+#### 1️⃣ Prima Fase: Micro-Guide Frammentate (Superata)
+- ❌ 1000+ file piccoli per stack (routes.md, controllers.md, validation.md...)
+- ❌ Contesto frammentato e disperso
+- ❌ Difficile manutenzione e navigazione
+- ❌ Context overhead per Claude
 
-#### Vantaggi dell'Approccio Consolidato
-✅ **Contesto coerente**: Tutti i pattern di uno stack in un posto  
-✅ **Meno frammentazione**: No 50+ micro-file per stack  
-✅ **Riferimenti interni**: Pattern correlati nello stesso documento  
-✅ **Maintenance semplificato**: Un file per stack vs decine di micro-guide  
-✅ **Claude-friendly**: File completi ma non eccessivamente lunghi  
+#### 2️⃣ Seconda Fase: Tutto Consolidato (Superata)  
+- ⚠️ Un file gigante per stack (3000+ righe)
+- ✅ Contesto unificato ma troppo pesante
+- ❌ Difficile manutenzione per team diversi
+- ❌ Difficile navigazione per sviluppatori
 
-#### Gerarchia degli Standard
+#### 3️⃣ Fase Attuale: Approccio Ibrido (Implementato) ✅
+**Best of both worlds** con selezione dinamica della granularità:
+
+##### **📚 Comprehensive Guidelines** - Core dell'architettura
+- **`bash-coding-guidelines.md`** - Bash completo con security + performance + examples
+- **`php-laravel-coding-guidelines.md`** - Laravel enterprise con DTO, Repository, Factory, Action + **references** alle micro-guide
+- **`ts-hono-coding-guidelines.md`** - TypeScript/Hono con SOLID + core patterns + performance
+- **`react-native-coding-guidelines.md`** - RN completo con architecture + state management + navigation
+
+##### **🎯 Micro-Guide Specializzate** - Mantenute per task specifici
+- **`routes.md`**, **`validation.md`**, **`migrations.md`** etc. - Deep implementation details
+- **Expert maintenance** - Ogni micro-guide mantenuta da specialisti
+- **Referenced dalla comprehensive** - Collegamenti `@php-laravel/routes.md` per dettagli
+
+##### **🤖 Dynamic Selection** - Task-router intelligente
+```typescript
+// Feature completa → Comprehensive
+taskRouter.selectGranularity("Implement order system") 
+→ "COMPREHENSIVE" // Carica php-laravel-coding-guidelines.md
+
+// Fix specifico → Micro-Guide  
+taskRouter.selectGranularity("Fix route validation")
+→ "SPECIFIC" // Carica validation.md
+
+// Implementazione complessa → Hybrid
+taskRouter.selectGranularity("Add payment with Laravel patterns")  
+→ "HYBRID" // Carica comprehensive + payment specifics
 ```
-Global Standards (sempre inclusi)
-├─ engineering-principles.md    → Principi universali
-├─ security-standards.md        → Sicurezza enterprise
-├─ performance-rules.md         → Performance globali
-└─ quality-gates.md            → Validazioni
 
-Stack-Specific Guidelines (include tutto per lo stack)
-├─ bash-coding-guidelines.md    → Shell scripting completo
-├─ php-laravel-coding-guidelines.md → Laravel enterprise completo  
+#### Gerarchia degli Standard (Attuale)
+```
+Global Standards (universali, sempre inclusi)
+├─ engineering-principles.md    → Principi architetturali enterprise
+├─ coding-guidelines.md         → Regole universali tutti i linguaggi  
+├─ security-standards.md        → Standard sicurezza enterprise
+├─ performance-rules.md         → Ottimizzazioni performance globali
+└─ quality-gates.md            → Quality gates e validazioni
+
+Stack-Specific Comprehensive (core patterns in context)
+├─ bash-coding-guidelines.md    → Shell scripting enterprise completo
+├─ php-laravel-coding-guidelines.md → Laravel patterns + references
 ├─ ts-hono-coding-guidelines.md → TypeScript/Hono completo
-└─ react-native-coding-guidelines.md → RN completo
+└─ react-native-coding-guidelines.md → RN patterns completo
 
-Task-Specific Micro-Guides (quando necessario)
-└─ routes.md, controllers.md, etc. → Task specifici quando servono
+Task-Specific Micro-Guides (deep dive specialists)
+├─ php-laravel/
+│  ├─ routes.md              → Deep routing patterns & edge cases
+│  ├─ validation.md          → Advanced validation & custom rules  
+│  ├─ migrations.md          → Migration patterns & rollback strategies
+│  └─ [other specialized guides]
+├─ ts-hono/
+│  └─ [task-specific guides as needed]
+└─ [other stacks...]
 ```
+
+### 📋 Linee Guida per Sviluppatori degli Standard
+
+#### **Quando Creare Comprehensive vs Micro-Guide**
+
+##### ✅ **Aggiungi al Comprehensive** quando:
+- Pattern **sempre usati insieme** (DTO + Repository + Factory)
+- **Core concepts** che definiscono lo stack  
+- **Onboarding essentials** per nuovi team members
+- Pattern con **strong coupling** e dependencies
+
+##### ✅ **Crea Micro-Guide** quando:
+- **Task specifici** che richiedono deep dive
+- **Edge cases** e troubleshooting avanzato
+- **Maintenance specializzata** da expert di dominio
+- **Optional features** non sempre necessarie
+
+##### 🔄 **Evolution Strategy**
+```typescript
+// Monitora usage patterns
+if (microGuide.usedWith(comprehensive) > 80%) {
+  // Candidato per merge nel comprehensive
+  considerMerging(microGuide, comprehensive);
+}
+
+if (comprehensiveSection.size > 500lines) {  
+  // Candidato per extraction in micro-guide
+  considerExtracting(section, toMicroGuide);
+}
+```
+
+#### **Reference Syntax Standard**
+```markdown
+# Nel comprehensive file:
+## Routes and Routing  
+> **📋 Complete Reference**: `@php-laravel/routes.md`
+>
+> **Quick Patterns:**
+> - [essential patterns here]
+> - [most common examples]
+
+# Nella micro-guide:
+# Routes - Deep Implementation
+> **Referenced by**: `php-laravel-coding-guidelines.md`
+> 
+> This guide provides complete routing implementation details...
+```
+
+### 🎯 **Vantaggi dell'Approccio Ibrido Attuale**
+✅ **Context-Aware Loading**: Task-router carica granularità ottimale  
+✅ **Developer-Friendly**: Comprehensive per overview, micro-guide per deep dive  
+✅ **Maintenance Distributed**: Team diversi su aree diverse  
+✅ **Performance Optimized**: Claude minimal context, export tools tutto insieme  
+✅ **Evolutionary**: Sistema cresce organicamente con usage patterns  
+✅ **Backward Compatible**: Micro-guide esistenti integrate senza disruption
 
 ---
 

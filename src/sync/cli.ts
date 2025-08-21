@@ -206,7 +206,7 @@ function writeOpenCodeHere(cwd: string) {
     const agentFiles = fg.sync('**/*.md', { cwd: claudeAgentsPath });
     
     // Create OpenCode equivalents for key agents
-    const keyAgents = ['docs-writer', 'test-writer', 'dto-builder', 'code-reviewer'];
+    const keyAgents = ['docs-writer', 'test-writer', 'code-reviewer'];
     
     agentFiles.forEach(file => {
       const name = path.basename(file, '.md');

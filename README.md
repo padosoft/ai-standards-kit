@@ -22,6 +22,38 @@ Obiettivo: **DRY a strati** + **contesto minimo e mirato** + **quality gates** b
 
 ---
 
+## 🎯 Come Funziona il Sistema
+
+### Per Claude (Claude Code)
+Claude supporta strutture complesse e navigazione multi-file, quindi:
+- **I file restano separati** in `ai/docs/standards/` e `ai/.claude/agents/`
+- **Nessun merge necessario** - Claude naviga e legge file multipli dinamicamente
+- **CLAUDE.md generato nel progetto** quando esegui `ai sync` con le regole appropriate
+- **Agenti specializzati** delegano task specifici mantenendo contesto minimo
+
+### Per Altri AI Tools (Gemini, Copilot, Cursor, etc.)
+Altri tool non supportano strutture complesse, quindi:
+- **Merge automatico** di tutti i file relevanti in un singolo file
+- **Export personalizzato** per ogni tool con header/footer specifici
+- **Inclusione automatica** di regole global + stack-specific rilevato
+
+### Regole Global vs Stack-Specific
+- **`/docs/standards/global/`**: Principi e standard **sempre applicati** (engineering principles, security, performance)
+- **`/docs/standards/{stack}/`**: Regole specifiche per Laravel, TypeScript, Workers, etc.
+- **Auto-inclusione**: Le regole global sono **sempre incluse** in tutti gli export
+- **Stack detection**: Il sistema rileva automaticamente lo stack e include le regole appropriate
+
+### Esempio Pratico
+```bash
+# In un progetto Laravel:
+ai sync --cursor-here
+
+# Genera .cursor/rules/ai-standards.mdc contenente:
+# 1. Tutte le regole da /docs/standards/global/* (sempre incluse)
+# 2. Tutte le regole da /docs/standards/php-laravel/* (stack rilevato)
+# 3. Header/footer specifici per Cursor
+```
+
 ## 📁 Struttura Cartelle
 
 ```

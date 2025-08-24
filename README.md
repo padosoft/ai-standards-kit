@@ -151,8 +151,10 @@ ai-standards-kit/                           # Root del pacchetto npm
 │  │        ├─ dto-builder.md               # Agente: DTO e mapper enterprise
 │  │        ├─ code-reviewer.md             # Agente: security, performance, maintainability
 │  │        ├─ adapter-builder.md           # Agente: crea adapter per nuovi AI tools
+│  │        ├─ ai-kit-debug-reporter.md     # Agente: crea un debug a fine di ogni chat per la visibilità e debug di AI tools
 │  │        └─ node-command-builder.md      # Agente: CLI Node.js professionali con logging
 │  └─ docs/                                 # Guide tecniche dettagliate
+│     └─ debug-mode.md                         # AI Debug Mode guide - Complete Routing Visibility
 │     └─ standards/                         # Standard per categoria/stack
 │        ├─ global/                         # Regole globali valide ovunque
 │        │  ├─ engineering-principles.md    # Principi architetturali enterprise

@@ -660,6 +660,112 @@ I quality gates sono definiti in `.claude/settings.json` e bloccano automaticame
 
 ---
 
+## 🔍 Debug Mode - Visibilità Completa sul Routing AI
+
+Il sistema include un **debug mode avanzato** per analizzare le decisioni di routing dell'AI:
+
+### Funzionalità Debug
+- **🎯 Stack Detection** - Vedi quale stack è stato rilevato e perché
+- **🤖 Agent Selection** - Monitora quali agenti sono stati scelti/delegati
+- **📚 Guide Loading** - Traccia quali guide/micro-guide sono state caricate
+- **⚡ Quality Gates** - Verifica quali gates sono stati applicati
+- **📊 Performance Metrics** - Analizza tempi di esecuzione e uso del contesto
+
+### Attivazione Debug Mode
+
+#### Via Script (Windows/Linux/Mac)
+```bash
+# Windows PowerShell
+.\ai\scripts\debug-control.ps1 enable    # Abilita debug base
+.\ai\scripts\debug-control.ps1 verbose   # Debug con routing dettagliato
+.\ai\scripts\debug-control.ps1 full      # Debug completo (tutti i dettagli)
+.\ai\scripts\debug-control.ps1 status    # Controlla stato attuale
+.\ai\scripts\debug-control.ps1 disable   # Disabilita debug
+
+# Linux/Mac
+ai/scripts/debug-control.sh enable       # Abilita debug base
+ai/scripts/debug-control.sh verbose      # Debug con routing dettagliato
+ai/scripts/debug-control.sh full         # Debug completo
+```
+
+#### Via Prompt (Override Diretto)
+```bash
+# Abilita debug anche se disabilitato in settings
+ai "create controller --debug"
+ai "implementa auth con debug verboso"
+ai "crea API endpoint --debug-full"
+
+# Disabilita debug anche se abilitato in settings
+ai "quick fix --no-debug"
+ai "correzione veloce senza debug"
+```
+
+### Output Debug Report
+```markdown
+## 🔍 AI Kit Debug Report
+**Stack Detected**: php-laravel (confidence: high)
+**Agents Used**: @laravel-controller-builder, @test-writer
+**Guides Loaded**: php-laravel-coding-guidelines.md (2.1k tokens)
+**Quality Gates**: 4 passed, 1 warning
+**Performance**: 850ms execution, 2.1k/200k context tokens
+
+### Decision Justifications
+- **Why Laravel**: composer.json + artisan presence (95% confidence)
+- **Why Controller Agent**: Task contains "create controller" keywords
+- **Why Test Writer**: Quality gates mandate 80% coverage
+```
+
+### Configurazione Avanzata
+Modifica `ai/.claude/settings.json`:
+```json
+{
+  "debug_mode": {
+    "enabled": false,              // On/off generale
+    "verbose_routing": true,        // Mostra decisioni routing
+    "show_stack_detection": true,   // Mostra detection stack
+    "show_agent_selection": true,   // Mostra selezione agenti
+    "show_guide_loading": true,     // Mostra caricamento guide
+    "show_quality_gates": true,     // Mostra quality gates
+    "show_execution_summary": true  // Mostra performance summary
+  }
+}
+```
+
+### Use Case per Debug Mode
+
+#### Testing Guide Changes
+```bash
+# Prima del cambiamento
+ai/scripts/debug-control.sh verbose
+ai "implement payment system" > before.log
+
+# Dopo modifiche alle guide
+ai "implement payment system" > after.log
+diff before.log after.log
+```
+
+#### Ottimizzazione Performance
+```bash
+ai/scripts/debug-control.sh performance
+ai "complex feature implementation"
+# Analizza bottlenecks nel report
+```
+
+#### Troubleshooting Agent Selection
+```bash
+ai/scripts/debug-control.sh full
+ai "create authentication"
+# Verifica quali agenti sono stati scelti e perché
+```
+
+### Agente Debug Dedicato
+L'agente **`@ai-kit-debug-reporter`** genera report dettagliati con:
+- Stack detection analysis con confidence score
+- Agent routing decisions con giustificazioni
+- Guide loading strategy e token usage
+- Quality gate enforcement results
+- Performance bottleneck identification
+
 ## 🚀 Node Command Builder - Agente per CLI Professionali
 
 Il nuovo agente **`node-command-builder`** crea comandi CLI Node.js/TypeScript con standard enterprise:

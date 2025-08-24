@@ -180,6 +180,117 @@ Every task produces:
 3. **Quality Report**: Gates passed/failed with specifics
 4. **Documentation Updates**: Auto-update README.md and COMPLETE_PROJECT_PROMPT.md
 5. **Next Steps**: CI/CD, monitoring, rollback procedures
+6. **Debug Report** (if enabled): Complete routing and execution visibility
+
+## Debug Mode Integration
+
+### Debug Reporting with Prompt Override
+I check for debug requests in TWO places (prompt overrides settings):
+
+1. **User Prompt Keywords** (highest priority):
+   - `--debug` or `con debug` → Enable basic debug
+   - `--debug-verbose` or `debug verboso` → Enable verbose routing
+   - `--debug-full` or `debug completo` → Enable full debug
+   - `--debug-performance` or `debug performance` → Performance focus
+   - `--no-debug` or `senza debug` → Disable debug
+
+2. **Settings.json** (default behavior):
+   - Check `debug_mode.enabled` configuration
+
+```typescript
+// Determine debug level
+function getDebugLevel(userPrompt: string, settings: Settings): DebugLevel {
+  // Check prompt override first (highest priority)
+  if (userPrompt.match(/--(no-)?debug|senza debug/i)) {
+    if (userPrompt.match(/--no-debug|senza debug/i)) return 'disabled';
+    if (userPrompt.match(/--debug-full|debug completo/i)) return 'full';
+    if (userPrompt.match(/--debug-verbose|debug verboso/i)) return 'verbose';
+    if (userPrompt.match(/--debug-performance|debug performance/i)) return 'performance';
+    if (userPrompt.match(/--debug|con debug/i)) return 'basic';
+  }
+  
+  // Fall back to settings
+  return settings.debug_mode?.enabled ? 'basic' : 'disabled';
+}
+
+// At the end of every task execution
+const debugLevel = getDebugLevel(originalTask, settings);
+if (debugLevel !== 'disabled') {
+  await Task({
+    agent: '@ai-kit-debug-reporter',
+    description: 'Generate AI Kit debug report',
+    prompt: `Generate complete debug report for task: "${originalTask}"
+    Debug Level: ${debugLevel}
+    
+    Include:
+    - Stack detection: ${stackDetected} (method: ${detectionMethod}, confidence: ${confidence})
+    - Agent selection: ${selectedAgents} (reasoning: ${selectionReasoning})
+    - Guide loading: ${loadedGuides} (strategy: ${loadingStrategy})
+    - Quality gates: ${appliedGates} (passed: ${passedGates}, failed: ${failedGates})
+    - Performance: ${executionTime}ms, ${contextTokens} tokens
+    - Issues found: ${issues}
+    - Recommendations: ${recommendations}`
+  });
+}
+```
+
+### Debug Data Collection
+Throughout execution, I collect:
+- **Stack Detection**: Method used, confidence score, evidence files
+- **Agent Selection**: Which agents chosen, why others rejected
+- **Guide Loading**: Which files loaded, tokens consumed, strategy used
+- **Quality Gates**: Which gates applied, results, blocked/warned actions
+- **Performance**: Execution time, context usage, agent calls
+- **Decision Justifications**: Why each routing decision was made
+
+### Debug Output Levels
+
+**Level 1 - Basic** (`debug_mode.enabled = true`):
+```markdown
+## 🔍 Execution Summary
+**Stack Detected**: php-laravel (confidence: high)
+**Agents Used**: @laravel-controller-builder, @test-writer  
+**Guides Loaded**: php-laravel-coding-guidelines.md, controllers.md
+**Quality Gates**: 4 passed, 1 warning
+**Performance**: 850ms execution, 2.1k context tokens
+```
+
+**Level 2 - Verbose** (`verbose_routing = true`):
+```markdown  
+## 🔄 Step-by-Step Execution
+1. **Stack Detection** (45ms)
+   - ✅ composer.json found → Laravel indicated
+   - ✅ artisan script exists → Laravel confirmed  
+   - ❌ package.json not found → No TypeScript
+   - **Result**: php-laravel (confidence: 95%)
+
+2. **Agent Selection** (30ms)
+   - Task contains "create controller" → @laravel-controller-builder matched
+   - Quality gates require tests → @test-writer selected
+   - No database changes → @laravel-migration-planner skipped
+   
+3. **Guide Loading** (120ms)  
+   - Comprehensive strategy selected (multi-file task)
+   - Loaded: php-laravel-coding-guidelines.md (1.8k tokens)
+   - Loaded: controllers.md (0.3k tokens)
+   - Total context: 2.1k tokens
+
+4. **Execution** (655ms)
+   - @laravel-controller-builder: Created StoreUserController.php
+   - @test-writer: Generated StoreUserControllerTest.php with 85% coverage
+   - Quality gates validated: All passed
+```
+
+**Level 3 - Performance** (`show_execution_summary = true`):
+```markdown
+## 📊 Performance Analysis
+- **Context Efficiency**: 2.1k / 200k tokens (1.05% utilization)
+- **Agent Coordination**: 2 parallel calls, 0 sequential dependencies  
+- **File Operations**: 3 reads (45ms), 2 writes (80ms), 1 edit (25ms)
+- **Quality Gate Evaluation**: 15ms for 5 gates
+- **Bottlenecks**: Guide loading (120ms) - consider caching
+- **Optimization Score**: 8.5/10
+```
 
 ## Auto-Documentation Rules
 

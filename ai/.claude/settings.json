@@ -7,6 +7,16 @@
   "enable_agents": true,
   "context_window_optimization": true,
   
+  "debug_mode": {
+    "enabled": false,
+    "verbose_routing": true,
+    "show_stack_detection": true,
+    "show_agent_selection": true,
+    "show_guide_loading": true,
+    "show_quality_gates": true,
+    "show_execution_summary": true
+  },
+  
   "quality_gates": {
     "database": {
       "block_deep_offset": {

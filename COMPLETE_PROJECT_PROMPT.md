@@ -86,6 +86,13 @@ Create a **complete enterprise AI standards toolkit** named `@padosoft/ai-standa
   - Integration with all other modules
   - Auto-update notifications during bootstrap and sync commands
 
+### Phase 2.5: Debug Control Scripts
+- [ ] **2.6** Create Debug Control Scripts
+  - **ai/scripts/debug-control.sh**: Bash script for Linux/Mac with enable/disable/verbose/full/status commands
+  - **ai/scripts/debug-control.ps1**: PowerShell script for Windows with same commands
+  - **ai/scripts/debug-control.bat**: Batch file wrapper for Windows compatibility (deprecated, use .ps1)
+  - **ai/docs/debug-mode.md**: Complete documentation on debug mode usage and analysis
+
 ### Phase 3: AI Standards (SSOT)
 - [ ] **3.1** Create `ai/.claude/settings.json`
   - Complete quality gates for all stacks (database, PHP/Laravel, TypeScript/Hono, Cloudflare Workers, React Native)
@@ -93,11 +100,24 @@ Create a **complete enterprise AI standards toolkit** named `@padosoft/ai-standa
   - Performance rules (query optimization, N+1 prevention)
   - Testing requirements (80% coverage minimum)
   - Tool permissions and delegation settings
+  - Debug mode configuration with verbose routing and prompt override support:
+    ```json
+    "debug_mode": {
+      "enabled": false,
+      "verbose_routing": true,
+      "show_stack_detection": true,
+      "show_agent_selection": true,
+      "show_guide_loading": true,
+      "show_quality_gates": true,
+      "show_execution_summary": true
+    }
+    ```
 
 - [ ] **3.2** Create Global Agents (`ai/.claude/agents/global/`)
-  - **task-router.md**: Enterprise orchestrator with stack detection and routing matrix
+  - **task-router.md**: Enterprise orchestrator with stack detection, routing matrix, and debug mode integration
   - **docs-writer.md**: Documentation specialist (README, ADR, RFC, API docs)  
   - **test-writer.md**: Test architect with 80%+ coverage strategy
+  - **ai-kit-debug-reporter.md**: Debug visibility system for routing decisions with prompt override capability
   - **dto-builder.md**: DTO and mapper specialist with versioning
   - **code-reviewer.md**: Security, performance, and maintainability auditor
   - **adapter-builder.md**: AI tool adapter specialist for new integrations

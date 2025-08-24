@@ -12,7 +12,9 @@
       "Bash(\"node_modules/.bin/tsc\" -p tsconfig.json)",
       "Bash(npm install:*)",
       "Bash(git add:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(aiscriptsdebug-control.bat status)"
     ],
     "deny": [],
     "ask": []

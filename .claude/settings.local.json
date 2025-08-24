@@ -14,7 +14,8 @@
       "Bash(git add:*)",
       "Bash(rm:*)",
       "Bash(mv:*)",
-      "Bash(aiscriptsdebug-control.bat status)"
+      "Bash(aiscriptsdebug-control.bat status)",
+      "WebFetch(domain:hono.dev)"
     ],
     "deny": [],
     "ask": []

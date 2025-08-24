@@ -1,1505 +1,752 @@
-# TypeScript Hono Coding Guidelines
+# TypeScript Hono Enterprise Coding Guidelines
 
 > **Extends**: `/docs/standards/global/coding-guidelines.md`
 > 
-> This document provides **TypeScript + Hono-specific** implementations of the enterprise coding guidelines. Always follow the global principles while applying these modern web API development patterns.
+> This document provides **TypeScript + Hono-specific** implementations of enterprise coding guidelines. Always follow global principles while applying these modern web API development patterns.
 
-## Core Programming Principles
+## Project Structure and Dependencies
 
-### Return Early Pattern
-```typescript
-// ✅ Good - Return Early to avoid deep nesting
-function processUser(user: User | null): Result {
-  if (!user) return { error: 'User not found' };
-  if (!user.isActive) return { error: 'User inactive' };
-  if (!user.hasPermission) return { error: 'Unauthorized' };
-  
-  // Happy path with minimal nesting
-  return { data: transformUser(user) };
-}
-
-// ❌ Bad - Nested conditions
-function processUserBad(user: User | null): Result {
-  if (user) {
-    if (user.isActive) {
-      if (user.hasPermission) {
-        return { data: transformUser(user) };
-      } else {
-        return { error: 'Unauthorized' };
-      }
-    } else {
-      return { error: 'User inactive' };
-    }
-  } else {
-    return { error: 'User not found' };
+### Recommended Stack
+```json
+{
+  "dependencies": {
+    "hono": "^4.0.0",
+    "@hono/zod-validator": "^0.2.0",
+    "zod": "^3.22.0",
+    "drizzle-orm": "^0.29.0",
+    "@libsql/client": "^0.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0",
+    "@hono/vite-dev-server": "^0.12.0"
   }
 }
 ```
 
-### Pure Functions and Immutability
+### Enterprise Project Structure
+```
+src/
+├── app.ts                    # Main app entry point
+├── env.ts                   # Environment validation (NO process.env usage elsewhere)
+├── database/
+│   ├── client.ts           # Single database connection factory
+│   ├── schema.ts           # Drizzle schema definitions
+│   └── migrations/         # Database migrations
+├── routes/
+│   ├── index.ts           # Route registry
+│   ├── users.ts           # User-specific routes
+│   ├── auth.ts            # Authentication routes
+│   └── health.ts          # Health check routes
+├── handlers/
+│   ├── users/             # User handlers grouped by feature
+│   │   ├── create.ts      # Single handler per file
+│   │   ├── update.ts      # Single handler per file
+│   │   └── delete.ts      # Single handler per file
+│   └── auth/
+│       ├── login.ts
+│       └── refresh.ts
+├── middleware/
+│   ├── auth.ts            # Authentication middleware
+│   ├── validation.ts      # Validation middleware
+│   ├── cors.ts           # CORS middleware
+│   └── logger.ts         # Request logging
+├── types/
+│   ├── api.ts            # API request/response types
+│   ├── database.ts       # Database types
+│   └── auth.ts           # Authentication types
+└── utils/
+    ├── password.ts       # Password hashing utilities
+    ├── jwt.ts           # JWT utilities
+    └── validation.ts     # Common validation schemas
+```
+
+## Typed Environment Configuration (REQUIRED)
+
+### Environment Validation with Zod
 ```typescript
-// ✅ Good - Pure function: same input always produces same output
-const calculateDiscount = (price: number, percentage: number): number => {
-  return price * (1 - percentage / 100);
+// env.ts - Single source of environment variables
+import { z } from 'zod';
+
+const envSchema = z.object({
+  // Database
+  DATABASE_URL: z.string().url(),
+  DATABASE_AUTH_TOKEN: z.string().optional(),
+  
+  // Authentication
+  JWT_SECRET: z.string().min(32),
+  JWT_EXPIRES_IN: z.string().default('7d'),
+  
+  // API Configuration
+  API_VERSION: z.string().default('v1'),
+  CORS_ORIGIN: z.string().url().optional(),
+  
+  // Feature Flags
+  ENABLE_REGISTRATION: z.coerce.boolean().default(true),
+  ENABLE_EMAIL_VERIFICATION: z.coerce.boolean().default(false),
+  
+  // Logging
+  LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
+});
+
+export type Env = z.infer<typeof envSchema>;
+
+// Validate environment on app startup
+export const env: Env = envSchema.parse(process.env);
+
+// ❌ NEVER DO THIS - Direct process.env usage
+// const dbUrl = process.env.DATABASE_URL; // NO!
+
+// ✅ ALWAYS DO THIS - Use validated env
+// import { env } from './env';
+// const dbUrl = env.DATABASE_URL; // YES!
+```
+
+## Database Architecture
+
+### Single Connection Factory (REQUIRED)
+```typescript
+// database/client.ts - Single database connection factory
+import { drizzle } from 'drizzle-orm/libsql';
+import { createClient } from '@libsql/client';
+import { env } from '../env';
+import * as schema from './schema';
+
+// ❌ BAD - Creating connection in constructor/per user
+class BadUserService {
+  private db;
+  
+  constructor(databaseUrl: string) {
+    // NO! Creates new connection every time
+    this.db = drizzle(createClient({ url: databaseUrl }));
+  }
+}
+
+// ✅ GOOD - Single connection factory
+const createDatabase = () => {
+  const client = createClient({
+    url: env.DATABASE_URL,
+    authToken: env.DATABASE_AUTH_TOKEN,
+  });
+  
+  return drizzle(client, { schema });
 };
 
-const calculateOrderTotal = (items: readonly OrderItem[]): Money => {
-  return items.reduce((total, item) => total + (item.price * item.quantity), 0);
-};
+// Export single database instance
+export const db = createDatabase();
 
-// ✅ Good - Immutable updates
-const updateUserPreferences = (user: User, newPrefs: Partial<UserPreferences>): User => {
-  return {
-    ...user,
-    preferences: {
-      ...user.preferences,
-      ...newPrefs,
-    },
-    updatedAt: new Date(),
+// ✅ GOOD - Services use shared connection
+export class UserService {
+  async createUser(userData: CreateUserData) {
+    return await db.insert(schema.users).values(userData).returning();
+  }
+  
+  async findUserById(id: string) {
+    return await db.select().from(schema.users).where(eq(schema.users.id, id));
+  }
+}
+```
+
+### Database Schema with Types
+```typescript
+// database/schema.ts
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
+import { z } from 'zod';
+
+export const users = sqliteTable('users', {
+  id: text('id').primaryKey(),
+  email: text('email').notNull().unique(),
+  username: text('username').notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});
+
+// Generate Zod schemas from Drizzle schema
+export const insertUserSchema = createInsertSchema(users, {
+  email: z.string().email(),
+  username: z.string().min(3).max(20),
+  passwordHash: z.string(), // Internal use only
+});
+
+export const selectUserSchema = createSelectSchema(users);
+
+// Public API schemas (without sensitive fields)
+export const createUserSchema = insertUserSchema.omit({
+  id: true,
+  passwordHash: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  password: z.string().min(8),
+});
+
+export const userResponseSchema = selectUserSchema.omit({
+  passwordHash: true,
+});
+
+// Type exports
+export type User = z.infer<typeof selectUserSchema>;
+export type CreateUserRequest = z.infer<typeof createUserSchema>;
+export type UserResponse = z.infer<typeof userResponseSchema>;
+```
+
+## Route Organization (Enterprise Pattern)
+
+### Typed Route Registry
+```typescript
+// routes/index.ts - Central route registry
+import { Hono } from 'hono';
+import { authRoutes } from './auth';
+import { userRoutes } from './users';
+import { healthRoutes } from './health';
+
+// Type-safe route context
+export type AppContext = {
+  Variables: {
+    user?: { id: string; email: string };
+    requestId: string;
   };
 };
 
-// ❌ Bad - Side effects and mutations
-let globalDiscount = 0;
-const calculateDiscountBad = (price: number): number => {
-  globalDiscount += 10; // Side effect!
-  console.log('Calculating...'); // Side effect!
-  return price * (1 - globalDiscount / 100);
-};
-```
-
-### SOLID Principles Implementation
-```typescript
-// ✅ Good - Single Responsibility Principle
-class UserValidator {
-  validateEmail(email: string): boolean {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  }
+export const setupRoutes = (app: Hono<AppContext>) => {
+  // Health check (no auth required)
+  app.route('/health', healthRoutes);
   
-  validatePassword(password: string): boolean {
-    return password.length >= 8 && /(?=.*[A-Za-z])(?=.*\d)/.test(password);
-  }
-}
-
-// ✅ Good - Open/Closed Principle
-interface NotificationSender {
-  send(message: string, recipient: string): Promise<void>;
-}
-
-class EmailNotificationSender implements NotificationSender {
-  async send(message: string, recipient: string): Promise<void> {
-    // Email implementation
-  }
-}
-
-class SMSNotificationSender implements NotificationSender {
-  async send(message: string, recipient: string): Promise<void> {
-    // SMS implementation
-  }
-}
-
-// ✅ Good - Dependency Inversion
-class NotificationService {
-  constructor(private sender: NotificationSender) {}
+  // API versioning
+  app.route('/api/v1/auth', authRoutes);
+  app.route('/api/v1/users', userRoutes);
   
-  async notify(message: string, recipient: string): Promise<void> {
-    await this.sender.send(message, recipient);
-  }
-}
-```
-
-### Naming Conventions
-```typescript
-// ✅ Good - Descriptive naming
-// Variables & Functions: camelCase
-const userId = '123';
-const calculateTotalPrice = (items: Item[]) => { /* ... */ };
-const isEmailValid = (email: string) => { /* ... */ };
-
-// Classes & Interfaces: PascalCase
-class UserService {}
-interface PaymentGateway {}
-type OrderStatus = 'pending' | 'completed';
-
-// Constants: SCREAMING_SNAKE_CASE
-const MAX_RETRIES = 3;
-const API_TIMEOUT = 5000;
-const DEFAULT_PAGE_SIZE = 20;
-
-// Boolean naming with proper prefixes
-const isActive = true;
-const hasPermission = user.permissions.includes('admin');
-const canEdit = user.role === 'editor';
-const shouldRetry = attempt < MAX_RETRIES;
-
-// ❌ Bad - Unclear naming
-const data = fetchData(); // Too generic
-const get = (id: string) => { /* ... */ }; // Unclear verb
-const valid = checkEmail(email); // Missing 'is' prefix
-```
-
-### Performance Patterns
-```typescript
-// ✅ Good - Use Map for O(1) lookups
-const createUserLookup = (users: User[]): Map<string, User> => {
-  return new Map(users.map(user => [user.id, user]));
+  return app;
 };
+```
 
-const userMap = createUserLookup(users);
-const user = userMap.get(userId); // O(1) lookup
+### Individual Route Files
+```typescript
+// routes/users.ts - User-specific routes
+import { Hono } from 'hono';
+import { zValidator } from '@hono/zod-validator';
+import { authMiddleware } from '../middleware/auth';
+import { createUserHandler, updateUserHandler, deleteUserHandler, getUserHandler } from '../handlers/users';
+import { createUserSchema, updateUserSchema } from '../database/schema';
+import type { AppContext } from './index';
 
-// ✅ Good - Process in batches for better performance
-async function processItemsInBatches<T>(
-  items: T[],
-  batchSize: number,
-  processor: (batch: T[]) => Promise<void>
-): Promise<void> {
-  for (let i = 0; i < items.length; i += batchSize) {
-    const batch = items.slice(i, i + batchSize);
-    await processor(batch);
+export const userRoutes = new Hono<AppContext>();
+
+// Middleware applied to all user routes
+userRoutes.use('/*', authMiddleware);
+
+// Typed routes with validation
+userRoutes.post('/', 
+  zValidator('json', createUserSchema),
+  createUserHandler
+);
+
+userRoutes.get('/:id',
+  zValidator('param', z.object({ id: z.string().uuid() })),
+  getUserHandler
+);
+
+userRoutes.put('/:id',
+  zValidator('param', z.object({ id: z.string().uuid() })),
+  zValidator('json', updateUserSchema),
+  updateUserHandler
+);
+
+userRoutes.delete('/:id',
+  zValidator('param', z.object({ id: z.string().uuid() })),
+  deleteUserHandler
+);
+```
+
+### Route Handlers (One Per File)
+```typescript
+// handlers/users/create.ts - Single responsibility
+import type { Handler } from 'hono';
+import { HTTPException } from 'hono/http-exception';
+import { UserService } from '../../services/user-service';
+import { hashPassword } from '../../utils/password';
+import type { AppContext } from '../../routes';
+import type { CreateUserRequest, UserResponse } from '../../database/schema';
+
+export const createUserHandler: Handler<
+  AppContext,
+  '/api/v1/users',
+  {
+    in: { json: CreateUserRequest };
+    out: { json: UserResponse };
   }
-}
-
-// ❌ Bad - O(n²) operations and no batching
-const findUserOrders = (orders: Order[], users: User[]) => {
-  return orders.map(order => ({
-    ...order,
-    user: users.find(u => u.id === order.userId) // O(n) lookup in loop = O(n²)
-  }));
+> = async (c) => {
+  try {
+    const userData = c.req.valid('json');
+    
+    // Hash password
+    const passwordHash = await hashPassword(userData.password);
+    
+    // Create user
+    const userService = new UserService();
+    const [newUser] = await userService.createUser({
+      ...userData,
+      passwordHash,
+      id: crypto.randomUUID(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    
+    // Return user without password
+    const { passwordHash: _, ...userResponse } = newUser;
+    
+    return c.json(userResponse, 201);
+  } catch (error) {
+    if (error.code === 'UNIQUE_CONSTRAINT_FAILED') {
+      throw new HTTPException(409, { message: 'User already exists' });
+    }
+    throw new HTTPException(500, { message: 'Internal server error' });
+  }
 };
-
-// Processing one by one without parallelization
-for (const item of items) {
-  await processItem(item); // No batching
-}
-```
-
-## Hono Application Structure
-
-### Application Setup and Configuration
-```typescript
-// ✅ Good - Well-structured Hono application
-import { Hono } from 'hono';
-import { cors } from 'hono/cors';
-import { logger } from 'hono/logger';
-import { prettyJSON } from 'hono/pretty-json';
-import { secureHeaders } from 'hono/secure-headers';
-import { timing } from 'hono/timing';
-import { validator } from 'hono/validator';
-import { jwt } from 'hono/jwt';
-
-import { userRoutes } from './routes/users';
-import { authRoutes } from './routes/auth';
-import { orderRoutes } from './routes/orders';
-import { errorHandler } from './middleware/errorHandler';
-import { rateLimiter } from './middleware/rateLimiter';
-import { requestId } from './middleware/requestId';
-import { metricsMiddleware } from './middleware/metrics';
-
-// Define environment variables type
-interface Environment {
-  JWT_SECRET: string;
-  DATABASE_URL: string;
-  REDIS_URL: string;
-  API_VERSION: string;
-}
-
-// ✅ Good - Type-safe Hono app with proper middleware chain
-const app = new Hono<{ Bindings: Environment }>();
-
-// Global middleware (order matters)
-app.use('*', requestId());
-app.use('*', timing());
-app.use('*', logger());
-app.use('*', secureHeaders());
-app.use('*', cors({
-  origin: (origin) => {
-    // Allow specific origins in production
-    const allowedOrigins = ['https://myapp.com', 'https://api.myapp.com'];
-    return allowedOrigins.includes(origin) ? origin : null;
-  },
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
-  exposeHeaders: ['X-Request-ID'],
-  maxAge: 86400,
-  credentials: true,
-}));
-
-// Rate limiting
-app.use('*', rateLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  standardHeaders: true,
-  legacyHeaders: false,
-}));
-
-// Metrics collection
-app.use('*', metricsMiddleware());
-
-// Pretty JSON in development
-if (process.env.NODE_ENV === 'development') {
-  app.use('*', prettyJSON());
-}
-
-// Health check endpoint
-app.get('/health', (c) => {
-  return c.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    version: c.env.API_VERSION || '1.0.0',
-  });
-});
-
-// API routes with versioning
-app.route('/api/v1/auth', authRoutes);
-app.route('/api/v1/users', userRoutes);
-app.route('/api/v1/orders', orderRoutes);
-
-// 404 handler
-app.notFound((c) => {
-  return c.json({
-    error: 'Not Found',
-    message: `Route ${c.req.method} ${c.req.path} not found`,
-    timestamp: new Date().toISOString(),
-  }, 404);
-});
-
-// Global error handler (must be last)
-app.onError(errorHandler);
-
-export default app;
-```
-
-### Route Organization and Handlers
-```typescript
-// ✅ Good - Well-organized route handlers with proper typing
-import { Hono } from 'hono';
-import { validator } from 'hono/validator';
-import { jwt } from 'hono/jwt';
-import { z } from 'zod';
-
-import { UserService } from '../services/UserService';
-import { requireAuth } from '../middleware/auth';
-import { requirePermissions } from '../middleware/permissions';
-import { createSuccessResponse, createErrorResponse } from '../utils/response';
-
-// Define schemas for validation
-const CreateUserSchema = z.object({
-  name: z.string().min(2).max(100),
-  email: z.string().email(),
-  password: z.string().min(8).max(100),
-  role: z.enum(['user', 'admin']).default('user'),
-});
-
-const UpdateUserSchema = z.object({
-  name: z.string().min(2).max(100).optional(),
-  email: z.string().email().optional(),
-  isActive: z.boolean().optional(),
-}).refine((data) => Object.keys(data).length > 0, {
-  message: "At least one field must be provided for update",
-});
-
-const UserQuerySchema = z.object({
-  page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(100).default(20),
-  search: z.string().optional(),
-  role: z.enum(['user', 'admin']).optional(),
-  isActive: z.coerce.boolean().optional(),
-});
-
-// Route parameter schema
-const UserParamsSchema = z.object({
-  id: z.string().uuid(),
-});
-
-type CreateUserInput = z.infer<typeof CreateUserSchema>;
-type UpdateUserInput = z.infer<typeof UpdateUserSchema>;
-type UserQuery = z.infer<typeof UserQuerySchema>;
-type UserParams = z.infer<typeof UserParamsSchema>;
-
-// ✅ Good - Type-safe route definitions
-const userRoutes = new Hono();
-
-// Get all users with filtering and pagination
-userRoutes.get(
-  '/',
-  requireAuth(),
-  requirePermissions(['users:read']),
-  validator('query', (value, c) => {
-    const parsed = UserQuerySchema.safeParse(value);
-    if (!parsed.success) {
-      return c.json(createErrorResponse('Invalid query parameters', parsed.error.errors), 400);
-    }
-    return parsed.data;
-  }),
-  async (c) => {
-    try {
-      const query = c.req.valid('query') as UserQuery;
-      const userService = new UserService(c.env.DATABASE_URL);
-      
-      const result = await userService.findUsers({
-        page: query.page,
-        limit: query.limit,
-        search: query.search,
-        role: query.role,
-        isActive: query.isActive,
-      });
-      
-      return c.json(createSuccessResponse(result, {
-        pagination: {
-          page: query.page,
-          limit: query.limit,
-          total: result.total,
-          totalPages: Math.ceil(result.total / query.limit),
-        }
-      }));
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      return c.json(createErrorResponse('Failed to fetch users'), 500);
-    }
-  }
-);
-
-// Get single user by ID
-userRoutes.get(
-  '/:id',
-  requireAuth(),
-  validator('param', (value, c) => {
-    const parsed = UserParamsSchema.safeParse(value);
-    if (!parsed.success) {
-      return c.json(createErrorResponse('Invalid user ID'), 400);
-    }
-    return parsed.data;
-  }),
-  async (c) => {
-    try {
-      const { id } = c.req.valid('param') as UserParams;
-      const userService = new UserService(c.env.DATABASE_URL);
-      
-      const user = await userService.findById(id);
-      if (!user) {
-        return c.json(createErrorResponse('User not found'), 404);
-      }
-      
-      // Check if user can access this resource
-      const currentUser = c.get('user');
-      if (currentUser.id !== id && !currentUser.permissions.includes('users:read:all')) {
-        return c.json(createErrorResponse('Access denied'), 403);
-      }
-      
-      return c.json(createSuccessResponse(user));
-    } catch (error) {
-      console.error('Error fetching user:', error);
-      return c.json(createErrorResponse('Failed to fetch user'), 500);
-    }
-  }
-);
-
-// Create new user
-userRoutes.post(
-  '/',
-  requireAuth(),
-  requirePermissions(['users:create']),
-  validator('json', (value, c) => {
-    const parsed = CreateUserSchema.safeParse(value);
-    if (!parsed.success) {
-      return c.json(createErrorResponse('Validation failed', parsed.error.errors), 400);
-    }
-    return parsed.data;
-  }),
-  async (c) => {
-    try {
-      const userData = c.req.valid('json') as CreateUserInput;
-      const userService = new UserService(c.env.DATABASE_URL);
-      
-      // Check if email already exists
-      const existingUser = await userService.findByEmail(userData.email);
-      if (existingUser) {
-        return c.json(createErrorResponse('Email already exists'), 409);
-      }
-      
-      const newUser = await userService.create(userData);
-      
-      // Log user creation
-      console.log(`User created: ${newUser.id} by ${c.get('user').id}`);
-      
-      return c.json(createSuccessResponse(newUser), 201);
-    } catch (error) {
-      console.error('Error creating user:', error);
-      return c.json(createErrorResponse('Failed to create user'), 500);
-    }
-  }
-);
-
-// Update user
-userRoutes.put(
-  '/:id',
-  requireAuth(),
-  validator('param', (value, c) => {
-    const parsed = UserParamsSchema.safeParse(value);
-    if (!parsed.success) {
-      return c.json(createErrorResponse('Invalid user ID'), 400);
-    }
-    return parsed.data;
-  }),
-  validator('json', (value, c) => {
-    const parsed = UpdateUserSchema.safeParse(value);
-    if (!parsed.success) {
-      return c.json(createErrorResponse('Validation failed', parsed.error.errors), 400);
-    }
-    return parsed.data;
-  }),
-  async (c) => {
-    try {
-      const { id } = c.req.valid('param') as UserParams;
-      const updateData = c.req.valid('json') as UpdateUserInput;
-      const userService = new UserService(c.env.DATABASE_URL);
-      
-      // Check if user exists
-      const existingUser = await userService.findById(id);
-      if (!existingUser) {
-        return c.json(createErrorResponse('User not found'), 404);
-      }
-      
-      // Authorization check
-      const currentUser = c.get('user');
-      if (currentUser.id !== id && !currentUser.permissions.includes('users:update:all')) {
-        return c.json(createErrorResponse('Access denied'), 403);
-      }
-      
-      // Check email uniqueness if email is being updated
-      if (updateData.email && updateData.email !== existingUser.email) {
-        const emailExists = await userService.findByEmail(updateData.email);
-        if (emailExists) {
-          return c.json(createErrorResponse('Email already exists'), 409);
-        }
-      }
-      
-      const updatedUser = await userService.update(id, updateData);
-      
-      return c.json(createSuccessResponse(updatedUser));
-    } catch (error) {
-      console.error('Error updating user:', error);
-      return c.json(createErrorResponse('Failed to update user'), 500);
-    }
-  }
-);
-
-// Delete user (soft delete)
-userRoutes.delete(
-  '/:id',
-  requireAuth(),
-  requirePermissions(['users:delete']),
-  validator('param', (value, c) => {
-    const parsed = UserParamsSchema.safeParse(value);
-    if (!parsed.success) {
-      return c.json(createErrorResponse('Invalid user ID'), 400);
-    }
-    return parsed.data;
-  }),
-  async (c) => {
-    try {
-      const { id } = c.req.valid('param') as UserParams;
-      const userService = new UserService(c.env.DATABASE_URL);
-      
-      const user = await userService.findById(id);
-      if (!user) {
-        return c.json(createErrorResponse('User not found'), 404);
-      }
-      
-      // Prevent self-deletion
-      const currentUser = c.get('user');
-      if (currentUser.id === id) {
-        return c.json(createErrorResponse('Cannot delete your own account'), 400);
-      }
-      
-      await userService.softDelete(id);
-      
-      // Log user deletion
-      console.log(`User deleted: ${id} by ${currentUser.id}`);
-      
-      return c.json(createSuccessResponse({ message: 'User deleted successfully' }));
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      return c.json(createErrorResponse('Failed to delete user'), 500);
-    }
-  }
-);
-
-export { userRoutes };
 ```
 
 ## Middleware Patterns
 
-### Custom Middleware Implementation
+### Authentication Middleware with Types
 ```typescript
-// ✅ Good - Authentication middleware
-import { Context, Next } from 'hono';
+// middleware/auth.ts
+import type { MiddlewareHandler } from 'hono';
+import { HTTPException } from 'hono/http-exception';
 import { jwt } from 'hono/jwt';
-import { createErrorResponse } from '../utils/response';
+import { env } from '../env';
+import type { AppContext } from '../routes';
 
-interface User {
-  id: string;
+interface JWTPayload {
+  sub: string;
   email: string;
-  role: string;
-  permissions: string[];
+  iat: number;
+  exp: number;
 }
 
-interface AuthContext extends Context {
-  get(key: 'user'): User;
-  set(key: 'user', value: User): void;
-}
-
-export const requireAuth = () => {
-  return async (c: Context, next: Next) => {
-    try {
-      // First check JWT validity
-      const jwtMiddleware = jwt({ secret: c.env.JWT_SECRET });
-      await jwtMiddleware(c, async () => {});
-      
-      const payload = c.get('jwtPayload');
-      if (!payload || !payload.sub) {
-        return c.json(createErrorResponse('Invalid token'), 401);
-      }
-      
-      // Fetch user details (could be cached)
-      const userService = new UserService(c.env.DATABASE_URL);
-      const user = await userService.findById(payload.sub);
-      
-      if (!user || !user.isActive) {
-        return c.json(createErrorResponse('User not found or inactive'), 401);
-      }
-      
-      // Add user to context
-      c.set('user', user);
-      
-      await next();
-    } catch (error) {
-      console.error('Authentication error:', error);
-      return c.json(createErrorResponse('Authentication failed'), 401);
-    }
-  };
-};
-
-// ✅ Good - Permission-based authorization
-export const requirePermissions = (requiredPermissions: string[]) => {
-  return async (c: Context, next: Next) => {
-    const user = c.get('user') as User;
-    
-    if (!user) {
-      return c.json(createErrorResponse('Authentication required'), 401);
-    }
-    
-    // Check if user has all required permissions
-    const hasAllPermissions = requiredPermissions.every(permission =>
-      user.permissions.includes(permission)
-    );
-    
-    if (!hasAllPermissions) {
-      return c.json(createErrorResponse('Insufficient permissions'), 403);
-    }
-    
-    await next();
-  };
-};
-
-// ✅ Good - Rate limiting middleware
-interface RateLimitOptions {
-  windowMs: number;
-  max: number;
-  standardHeaders?: boolean;
-  legacyHeaders?: boolean;
-  keyGen?: (c: Context) => string;
-}
-
-export const rateLimiter = (options: RateLimitOptions) => {
-  const { windowMs, max, standardHeaders = true, legacyHeaders = false, keyGen } = options;
-  const requests = new Map<string, { count: number; resetTime: number }>();
+export const authMiddleware: MiddlewareHandler<AppContext> = async (c, next) => {
+  const token = c.req.header('Authorization')?.replace('Bearer ', '');
   
-  return async (c: Context, next: Next) => {
-    const key = keyGen ? keyGen(c) : c.req.header('x-forwarded-for') || 'unknown';
-    const now = Date.now();
-    const windowStart = now - windowMs;
+  if (!token) {
+    throw new HTTPException(401, { message: 'Authorization token required' });
+  }
+  
+  try {
+    const payload = await jwt.verify(token, env.JWT_SECRET) as JWTPayload;
     
-    // Clean up old entries
-    for (const [k, v] of requests.entries()) {
-      if (v.resetTime < windowStart) {
-        requests.delete(k);
-      }
-    }
-    
-    // Get current request count
-    const current = requests.get(key);
-    let count = 1;
-    let resetTime = now + windowMs;
-    
-    if (current && current.resetTime > now) {
-      count = current.count + 1;
-      resetTime = current.resetTime;
-    }
-    
-    requests.set(key, { count, resetTime });
-    
-    // Set rate limit headers
-    if (standardHeaders) {
-      c.res.headers.set('RateLimit-Limit', max.toString());
-      c.res.headers.set('RateLimit-Remaining', Math.max(0, max - count).toString());
-      c.res.headers.set('RateLimit-Reset', new Date(resetTime).toISOString());
-    }
-    
-    if (legacyHeaders) {
-      c.res.headers.set('X-RateLimit-Limit', max.toString());
-      c.res.headers.set('X-RateLimit-Remaining', Math.max(0, max - count).toString());
-      c.res.headers.set('X-RateLimit-Reset', Math.floor(resetTime / 1000).toString());
-    }
-    
-    if (count > max) {
-      return c.json(createErrorResponse('Too many requests'), 429);
-    }
+    // Set user in context
+    c.set('user', {
+      id: payload.sub,
+      email: payload.email,
+    });
     
     await next();
-  };
+  } catch (error) {
+    throw new HTTPException(401, { message: 'Invalid token' });
+  }
+};
+```
+
+### CORS Middleware
+```typescript
+// middleware/cors.ts
+import { cors } from 'hono/cors';
+import { env } from '../env';
+
+export const corsMiddleware = cors({
+  origin: env.CORS_ORIGIN ? [env.CORS_ORIGIN] : ['http://localhost:3000'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  exposeHeaders: ['X-Request-ID'],
+  maxAge: 86400, // 24 hours
+  credentials: true,
+});
+```
+
+## Validation Patterns
+
+### Comprehensive Zod Validation
+```typescript
+// utils/validation.ts
+import { z } from 'zod';
+
+// Common validation patterns
+export const commonValidations = {
+  id: z.string().uuid(),
+  email: z.string().email().max(255),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(100, 'Password too long')
+    .regex(/(?=.*[a-z])/, 'Password must contain lowercase letter')
+    .regex(/(?=.*[A-Z])/, 'Password must contain uppercase letter')
+    .regex(/(?=.*\d)/, 'Password must contain number'),
+  username: z.string()
+    .min(3, 'Username must be at least 3 characters')
+    .max(20, 'Username too long')
+    .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
+  pagination: z.object({
+    page: z.coerce.number().min(1).default(1),
+    limit: z.coerce.number().min(1).max(100).default(20),
+  }),
 };
 
-// ✅ Good - Request ID middleware
-export const requestId = () => {
-  return async (c: Context, next: Next) => {
-    const requestId = c.req.header('x-request-id') || crypto.randomUUID();
-    
-    c.set('requestId', requestId);
-    c.res.headers.set('X-Request-ID', requestId);
-    
-    await next();
-  };
-};
-
-// ✅ Good - Error handling middleware
-export const errorHandler = (error: Error, c: Context) => {
-  console.error('Unhandled error:', {
-    error: error.message,
-    stack: error.stack,
-    requestId: c.get('requestId'),
-    method: c.req.method,
-    path: c.req.path,
-    userAgent: c.req.header('user-agent'),
+// API response wrappers
+export const apiResponse = <T extends z.ZodTypeAny>(dataSchema: T) =>
+  z.object({
+    data: dataSchema,
+    success: z.literal(true),
+    timestamp: z.date(),
   });
+
+export const apiError = z.object({
+  error: z.string(),
+  success: z.literal(false),
+  timestamp: z.date(),
+  code: z.string().optional(),
+});
+
+// Pagination wrapper
+export const paginatedResponse = <T extends z.ZodTypeAny>(itemSchema: T) =>
+  z.object({
+    data: z.array(itemSchema),
+    pagination: z.object({
+      page: z.number(),
+      limit: z.number(),
+      total: z.number(),
+      totalPages: z.number(),
+    }),
+    success: z.literal(true),
+  });
+```
+
+## Error Handling
+
+### Centralized Error Handler
+```typescript
+// middleware/error-handler.ts
+import type { ErrorHandler } from 'hono';
+import { HTTPException } from 'hono/http-exception';
+import { ZodError } from 'zod';
+import { env } from '../env';
+
+export const errorHandler: ErrorHandler = (err, c) => {
+  // Zod validation errors
+  if (err instanceof ZodError) {
+    return c.json({
+      error: 'Validation failed',
+      success: false,
+      timestamp: new Date(),
+      details: err.errors.map(e => ({
+        path: e.path.join('.'),
+        message: e.message,
+      })),
+    }, 400);
+  }
   
-  // Don't expose internal errors in production
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  const message = isDevelopment ? error.message : 'Internal server error';
+  // HTTP exceptions
+  if (err instanceof HTTPException) {
+    return c.json({
+      error: err.message,
+      success: false,
+      timestamp: new Date(),
+    }, err.status);
+  }
   
-  return c.json(createErrorResponse(message, isDevelopment ? error.stack : undefined), 500);
+  // Database errors
+  if (err.code === 'UNIQUE_CONSTRAINT_FAILED') {
+    return c.json({
+      error: 'Resource already exists',
+      success: false,
+      timestamp: new Date(),
+    }, 409);
+  }
+  
+  // Log error in production
+  if (env.LOG_LEVEL === 'debug') {
+    console.error('Unhandled error:', err);
+  }
+  
+  // Generic error response
+  return c.json({
+    error: 'Internal server error',
+    success: false,
+    timestamp: new Date(),
+  }, 500);
 };
 ```
 
 ## Service Layer Architecture
 
-### Business Logic Services
+### Typed Service Classes
 ```typescript
-// ✅ Good - Well-structured service with proper separation
-import { z } from 'zod';
-import bcrypt from 'bcryptjs';
-
-import { Database } from '../database/Database';
-import { User, CreateUserData, UpdateUserData, UserFilters } from '../types/User';
-import { PaginatedResult } from '../types/Common';
+// services/user-service.ts
+import { eq, and, or } from 'drizzle-orm';
+import { db } from '../database/client';
+import { users } from '../database/schema';
+import type { User, CreateUserRequest } from '../database/schema';
 
 export class UserService {
-  private db: Database;
-  
-  constructor(databaseUrl: string) {
-    this.db = new Database(databaseUrl);
+  async createUser(userData: Omit<User, 'id'> & { id: string }): Promise<[User]> {
+    return await db.insert(users).values(userData).returning();
   }
   
-  async findUsers(filters: UserFilters): Promise<PaginatedResult<User>> {
-    const { page, limit, search, role, isActive } = filters;
-    const offset = (page - 1) * limit;
+  async findUserById(id: string): Promise<User | null> {
+    const [user] = await db.select()
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
     
-    // Build dynamic query
-    let query = this.db.users.select();
-    let countQuery = this.db.users.count();
-    
-    if (search) {
-      const searchPattern = `%${search}%`;
-      query = query.where(db => 
-        db.or(
-          db.name.like(searchPattern),
-          db.email.like(searchPattern)
-        )
-      );
-      countQuery = countQuery.where(db => 
-        db.or(
-          db.name.like(searchPattern),
-          db.email.like(searchPattern)
-        )
-      );
-    }
-    
-    if (role) {
-      query = query.where(db => db.role.equals(role));
-      countQuery = countQuery.where(db => db.role.equals(role));
-    }
-    
-    if (isActive !== undefined) {
-      query = query.where(db => db.isActive.equals(isActive));
-      countQuery = countQuery.where(db => db.isActive.equals(isActive));
-    }
-    
-    // Execute queries
-    const [users, totalCount] = await Promise.all([
-      query
-        .orderBy(db => db.createdAt, 'desc')
-        .limit(limit)
-        .offset(offset)
-        .execute(),
-      countQuery.execute(),
-    ]);
-    
-    return {
-      data: users.map(this.mapToUser),
-      total: totalCount,
-      page,
-      limit,
-    };
+    return user || null;
   }
   
-  async findById(id: string): Promise<User | null> {
-    const user = await this.db.users
-      .select()
-      .where(db => db.id.equals(id))
-      .where(db => db.deletedAt.isNull())
-      .first();
+  async findUserByEmail(email: string): Promise<User | null> {
+    const [user] = await db.select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
     
-    return user ? this.mapToUser(user) : null;
+    return user || null;
   }
   
-  async findByEmail(email: string): Promise<User | null> {
-    const user = await this.db.users
-      .select()
-      .where(db => db.email.equals(email))
-      .where(db => db.deletedAt.isNull())
-      .first();
-    
-    return user ? this.mapToUser(user) : null;
-  }
-  
-  async create(userData: CreateUserData): Promise<User> {
-    // Validate input
-    const validatedData = this.validateCreateUserData(userData);
-    
-    // Hash password
-    const hashedPassword = await bcrypt.hash(validatedData.password, 12);
-    
-    // Create user with transaction
-    const user = await this.db.transaction(async (tx) => {
-      const newUser = await tx.users.insert({
-        id: crypto.randomUUID(),
-        name: validatedData.name,
-        email: validatedData.email.toLowerCase(),
-        passwordHash: hashedPassword,
-        role: validatedData.role,
-        isActive: true,
-        emailVerified: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      
-      // Create default permissions based on role
-      await this.createDefaultPermissions(tx, newUser.id, validatedData.role);
-      
-      return newUser;
-    });
-    
-    return this.mapToUser(user);
-  }
-  
-  async update(id: string, updateData: UpdateUserData): Promise<User> {
-    const validatedData = this.validateUpdateUserData(updateData);
-    
-    const updatedUser = await this.db.users
-      .update({
-        ...validatedData,
+  async updateUser(id: string, updates: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User | null> {
+    const [updatedUser] = await db.update(users)
+      .set({
+        ...updates,
         updatedAt: new Date(),
       })
-      .where(db => db.id.equals(id))
-      .where(db => db.deletedAt.isNull())
+      .where(eq(users.id, id))
       .returning();
     
-    if (!updatedUser) {
-      throw new Error('User not found');
-    }
-    
-    return this.mapToUser(updatedUser);
+    return updatedUser || null;
   }
   
-  async softDelete(id: string): Promise<void> {
-    await this.db.users
-      .update({
-        isActive: false,
-        deletedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(db => db.id.equals(id))
-      .execute();
+  async deleteUser(id: string): Promise<boolean> {
+    const result = await db.delete(users)
+      .where(eq(users.id, id));
+    
+    return result.changes > 0;
   }
   
-  async verifyPassword(email: string, password: string): Promise<User | null> {
-    const user = await this.db.users
-      .select()
-      .where(db => db.email.equals(email.toLowerCase()))
-      .where(db => db.isActive.equals(true))
-      .where(db => db.deletedAt.isNull())
-      .first();
+  async searchUsers(query: string, pagination: { page: number; limit: number }) {
+    const offset = (pagination.page - 1) * pagination.limit;
     
-    if (!user) {
-      return null;
-    }
+    const searchResults = await db.select()
+      .from(users)
+      .where(
+        or(
+          users.email.like(`%${query}%`),
+          users.username.like(`%${query}%`)
+        )
+      )
+      .limit(pagination.limit)
+      .offset(offset);
     
-    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
-    if (!isValidPassword) {
-      return null;
-    }
-    
-    // Update last login
-    await this.db.users
-      .update({ lastLoginAt: new Date() })
-      .where(db => db.id.equals(user.id))
-      .execute();
-    
-    return this.mapToUser(user);
-  }
-  
-  private validateCreateUserData(data: CreateUserData): CreateUserData {
-    const schema = z.object({
-      name: z.string().min(2).max(100),
-      email: z.string().email().max(255),
-      password: z.string().min(8).max(100),
-      role: z.enum(['user', 'admin']),
-    });
-    
-    return schema.parse(data);
-  }
-  
-  private validateUpdateUserData(data: UpdateUserData): UpdateUserData {
-    const schema = z.object({
-      name: z.string().min(2).max(100).optional(),
-      email: z.string().email().max(255).optional(),
-      isActive: z.boolean().optional(),
-    }).refine(data => Object.keys(data).length > 0);
-    
-    return schema.parse(data);
-  }
-  
-  private mapToUser(dbUser: any): User {
-    return {
-      id: dbUser.id,
-      name: dbUser.name,
-      email: dbUser.email,
-      role: dbUser.role,
-      isActive: dbUser.isActive,
-      emailVerified: dbUser.emailVerified,
-      lastLoginAt: dbUser.lastLoginAt,
-      createdAt: dbUser.createdAt,
-      updatedAt: dbUser.updatedAt,
-      permissions: [], // Load separately if needed
-    };
-  }
-  
-  private async createDefaultPermissions(tx: any, userId: string, role: string): Promise<void> {
-    const defaultPermissions = {
-      user: ['profile:read', 'profile:update'],
-      admin: ['*'],
-    };
-    
-    const permissions = defaultPermissions[role as keyof typeof defaultPermissions] || [];
-    
-    for (const permission of permissions) {
-      await tx.userPermissions.insert({
-        id: crypto.randomUUID(),
-        userId,
-        permission,
-        createdAt: new Date(),
-      });
-    }
+    return searchResults;
   }
 }
 ```
 
-## Error Handling Patterns
+## Testing Patterns with Vitest
 
-### Structured Error Handling
+### Test Setup
 ```typescript
-// ✅ Good - Custom error classes
-export class AppError extends Error {
-  public statusCode: number;
-  public code: string;
-  public details?: unknown;
-  public isOperational = true;
-  
-  constructor(
-    message: string,
-    statusCode: number = 500,
-    code: string = 'INTERNAL_ERROR',
-    details?: unknown
-  ) {
-    super(message);
-    this.name = this.constructor.name;
-    this.statusCode = statusCode;
-    this.code = code;
-    this.details = details;
-    
-    Error.captureStackTrace(this, this.constructor);
-  }
-}
+// tests/setup.ts
+import { beforeEach } from 'vitest';
+import { db } from '../src/database/client';
+import { users } from '../src/database/schema';
 
-export class ValidationError extends AppError {
-  constructor(message: string, details?: unknown) {
-    super(message, 400, 'VALIDATION_ERROR', details);
-  }
-}
-
-export class NotFoundError extends AppError {
-  constructor(resource: string, id?: string) {
-    const message = id ? `${resource} with id '${id}' not found` : `${resource} not found`;
-    super(message, 404, 'NOT_FOUND');
-  }
-}
-
-export class UnauthorizedError extends AppError {
-  constructor(message: string = 'Authentication required') {
-    super(message, 401, 'UNAUTHORIZED');
-  }
-}
-
-export class ForbiddenError extends AppError {
-  constructor(message: string = 'Access denied') {
-    super(message, 403, 'FORBIDDEN');
-  }
-}
-
-export class ConflictError extends AppError {
-  constructor(message: string, details?: unknown) {
-    super(message, 409, 'CONFLICT', details);
-  }
-}
-
-// ✅ Good - Error response utilities
-interface ErrorResponse {
-  error: {
-    message: string;
-    code: string;
-    details?: unknown;
-    requestId?: string;
-  };
-  timestamp: string;
-}
-
-interface SuccessResponse<T> {
-  data: T;
-  meta?: Record<string, unknown>;
-  timestamp: string;
-}
-
-export function createErrorResponse(
-  message: string,
-  details?: unknown,
-  code: string = 'ERROR'
-): ErrorResponse {
-  return {
-    error: {
-      message,
-      code,
-      details,
-    },
-    timestamp: new Date().toISOString(),
-  };
-}
-
-export function createSuccessResponse<T>(
-  data: T,
-  meta?: Record<string, unknown>
-): SuccessResponse<T> {
-  return {
-    data,
-    meta,
-    timestamp: new Date().toISOString(),
-  };
-}
-
-// ✅ Good - Global error handler with proper logging
-export const errorHandler = (error: Error, c: Context) => {
-  const requestId = c.get('requestId');
-  
-  // Log error with context
-  const errorLog = {
-    message: error.message,
-    stack: error.stack,
-    requestId,
-    method: c.req.method,
-    path: c.req.path,
-    userAgent: c.req.header('user-agent'),
-    ip: c.req.header('x-forwarded-for') || 'unknown',
-    timestamp: new Date().toISOString(),
-  };
-  
-  if (error instanceof AppError) {
-    // Operational errors - log as info/warn
-    if (error.statusCode >= 500) {
-      console.error('Operational error:', errorLog);
-    } else {
-      console.warn('Client error:', errorLog);
-    }
-    
-    const response = createErrorResponse(
-      error.message,
-      error.details,
-      error.code
-    );
-    response.error.requestId = requestId;
-    
-    return c.json(response, error.statusCode);
-  } else {
-    // Programming errors - log as error
-    console.error('Programming error:', errorLog);
-    
-    // Don't expose internal errors in production
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const message = isDevelopment ? error.message : 'Internal server error';
-    const details = isDevelopment ? error.stack : undefined;
-    
-    const response = createErrorResponse(message, details, 'INTERNAL_ERROR');
-    response.error.requestId = requestId;
-    
-    return c.json(response, 500);
-  }
-};
+beforeEach(async () => {
+  // Clean database before each test
+  await db.delete(users);
+});
 ```
 
-## Testing Patterns
-
-### API Testing with Hono
+### Handler Testing
 ```typescript
-// ✅ Good - Comprehensive API testing
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+// tests/handlers/users/create.test.ts
+import { describe, it, expect, beforeEach } from 'vitest';
+import { Hono } from 'hono';
 import { testClient } from 'hono/testing';
+import { setupRoutes } from '../../../src/routes';
 
-import app from '../app';
-import { Database } from '../database/Database';
-import { UserService } from '../services/UserService';
-
-// Test client setup
-const client = testClient(app);
-
-describe('User API', () => {
-  let database: Database;
-  let userService: UserService;
-  let testUser: any;
-  let authToken: string;
+describe('Create User Handler', () => {
+  let app: Hono;
+  let client: ReturnType<typeof testClient>;
   
-  beforeEach(async () => {
-    // Setup test database
-    database = new Database(process.env.TEST_DATABASE_URL!);
-    await database.migrate();
-    
-    userService = new UserService(process.env.TEST_DATABASE_URL!);
-    
-    // Create test user
-    testUser = await userService.create({
-      name: 'Test User',
+  beforeEach(() => {
+    app = new Hono();
+    app = setupRoutes(app);
+    client = testClient(app);
+  });
+  
+  it('should create user with valid data', async () => {
+    const userData = {
       email: 'test@example.com',
-      password: 'password123',
-      role: 'user',
+      username: 'testuser',
+      password: 'Password123!',
+    };
+    
+    const response = await client.api.v1.users.$post({
+      json: userData,
     });
     
-    // Generate auth token for testing
-    authToken = await generateTestToken(testUser.id);
+    expect(response.status).toBe(201);
+    
+    const result = await response.json();
+    expect(result.data.email).toBe(userData.email);
+    expect(result.data.username).toBe(userData.username);
+    expect(result.data.passwordHash).toBeUndefined(); // Should not be returned
   });
   
-  afterEach(async () => {
-    await database.truncate();
-    await database.close();
-  });
-  
-  describe('GET /api/v1/users', () => {
-    it('should return paginated users list', async () => {
-      const response = await client.api.v1.users.$get(
-        {
-          query: {
-            page: '1',
-            limit: '10',
-          },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-      
-      expect(response.status).toBe(200);
-      
-      const data = await response.json();
-      expect(data).toHaveProperty('data');
-      expect(data).toHaveProperty('meta.pagination');
-      expect(Array.isArray(data.data)).toBe(true);
+  it('should reject invalid email', async () => {
+    const userData = {
+      email: 'invalid-email',
+      username: 'testuser',
+      password: 'Password123!',
+    };
+    
+    const response = await client.api.v1.users.$post({
+      json: userData,
     });
     
-    it('should filter users by search query', async () => {
-      await userService.create({
-        name: 'John Doe',
-        email: 'john@example.com',
-        password: 'password123',
-        role: 'user',
-      });
-      
-      const response = await client.api.v1.users.$get(
-        {
-          query: {
-            search: 'john',
-          },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-      
-      expect(response.status).toBe(200);
-      
-      const data = await response.json();
-      expect(data.data).toHaveLength(1);
-      expect(data.data[0].name).toBe('John Doe');
-    });
+    expect(response.status).toBe(400);
     
-    it('should return 401 without authentication', async () => {
-      const response = await client.api.v1.users.$get();
-      
-      expect(response.status).toBe(401);
-      
-      const data = await response.json();
-      expect(data.error.code).toBe('UNAUTHORIZED');
-    });
-  });
-  
-  describe('POST /api/v1/users', () => {
-    it('should create new user with valid data', async () => {
-      const userData = {
-        name: 'New User',
-        email: 'newuser@example.com',
-        password: 'password123',
-        role: 'user' as const,
-      };
-      
-      const response = await client.api.v1.users.$post(
-        {
-          json: userData,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-      
-      expect(response.status).toBe(201);
-      
-      const data = await response.json();
-      expect(data.data).toHaveProperty('id');
-      expect(data.data.name).toBe(userData.name);
-      expect(data.data.email).toBe(userData.email);
-      expect(data.data).not.toHaveProperty('passwordHash');
-    });
-    
-    it('should return 400 with invalid email', async () => {
-      const userData = {
-        name: 'Test User',
-        email: 'invalid-email',
-        password: 'password123',
-        role: 'user' as const,
-      };
-      
-      const response = await client.api.v1.users.$post(
-        {
-          json: userData,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-      
-      expect(response.status).toBe(400);
-      
-      const data = await response.json();
-      expect(data.error.code).toBe('VALIDATION_ERROR');
-    });
-    
-    it('should return 409 with duplicate email', async () => {
-      const userData = {
-        name: 'Test User 2',
-        email: testUser.email, // Same email as existing user
-        password: 'password123',
-        role: 'user' as const,
-      };
-      
-      const response = await client.api.v1.users.$post(
-        {
-          json: userData,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-      
-      expect(response.status).toBe(409);
-      
-      const data = await response.json();
-      expect(data.error.message).toBe('Email already exists');
-    });
-  });
-  
-  describe('GET /api/v1/users/:id', () => {
-    it('should return user by id', async () => {
-      const response = await client.api.v1.users[':id'].$get(
-        {
-          param: {
-            id: testUser.id,
-          },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-      
-      expect(response.status).toBe(200);
-      
-      const data = await response.json();
-      expect(data.data.id).toBe(testUser.id);
-      expect(data.data.name).toBe(testUser.name);
-    });
-    
-    it('should return 404 for non-existent user', async () => {
-      const response = await client.api.v1.users[':id'].$get(
-        {
-          param: {
-            id: '00000000-0000-0000-0000-000000000000',
-          },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-      
-      expect(response.status).toBe(404);
-    });
-    
-    it('should return 400 for invalid UUID', async () => {
-      const response = await client.api.v1.users[':id'].$get(
-        {
-          param: {
-            id: 'invalid-uuid',
-          },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-      
-      expect(response.status).toBe(400);
+    const result = await response.json();
+    expect(result.error).toBe('Validation failed');
+    expect(result.details).toContainEqual({
+      path: 'email',
+      message: expect.stringContaining('email'),
     });
   });
 });
-
-// Test utilities
-async function generateTestToken(userId: string): Promise<string> {
-  // Implementation depends on your JWT setup
-  return 'test-jwt-token';
-}
 ```
 
-## Comments and Documentation
+## Performance Patterns
 
-### Meaningful Comments
+### Database Query Optimization
 ```typescript
-// ✅ Good - Explain WHY, not WHAT
-// Use exponential backoff to avoid overwhelming the service
-const delay = Math.min(1000 * Math.pow(2, attempt), MAX_DELAY);
-
-// Complex business rules need explanation
-// Per company policy, premium users get 30-day refund window,
-// while standard users only get 14 days
-const refundWindowDays = user.isPremium ? 30 : 14;
-
-// ❌ Bad - Obvious comments that add no value
-// Increment counter by 1
-counter++;
-
-// Return the user
-return user;
-
-// Get user ID from request
-const userId = req.params.id;
-```
-
-### JSDoc for Public APIs
-```typescript
-/**
- * Processes a payment with retry logic and fraud detection
- * @param paymentData - The payment information
- * @param options - Configuration options for processing
- * @returns Promise that resolves to payment result
- * @throws PaymentError when payment fails after all retries
- * @throws FraudDetectedError when suspicious activity is detected
- * 
- * @example
- * ```typescript
- * const result = await processPayment(
- *   { amount: 100, currency: 'USD' },
- *   { maxRetries: 3, enableFraudCheck: true }
- * );
- * ```
- */
-async function processPayment(
-  paymentData: PaymentData,
-  options: PaymentOptions = {}
-): Promise<PaymentResult> {
-  // Implementation
-}
-```
-
-## Security Best Practices
-
-### Input Validation and Sanitization
-```typescript
-// ✅ Good - Comprehensive input validation
-const validateAndSanitizeUserInput = (input: unknown): SanitizedInput => {
-  // Validate structure with Zod
-  const schema = z.object({
-    name: z.string().min(1).max(100).trim(),
-    email: z.string().email().toLowerCase(),
-    bio: z.string().max(500).optional(),
-  });
-  
-  const validated = schema.parse(input);
-  
-  // Sanitize HTML content
-  const sanitized = {
-    ...validated,
-    bio: validated.bio ? DOMPurify.sanitize(validated.bio) : undefined,
-  };
-  
-  return sanitized;
-};
-
-// ✅ Good - Rate limiting implementation
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-
-const checkRateLimit = (clientId: string, limit: number, windowMs: number): boolean => {
-  const now = Date.now();
-  const clientLimit = rateLimitMap.get(clientId);
-  
-  if (!clientLimit || now > clientLimit.resetTime) {
-    rateLimitMap.set(clientId, { count: 1, resetTime: now + windowMs });
-    return true;
+// ✅ GOOD - Optimized queries
+class OptimizedUserService {
+  // Use indexes effectively
+  async findActiveUsers(limit: number = 20) {
+    return await db.select()
+      .from(users)
+      .where(eq(users.isActive, true)) // Indexed column
+      .orderBy(desc(users.createdAt)) // Indexed for sorting
+      .limit(limit);
   }
   
-  if (clientLimit.count >= limit) {
-    return false;
+  // Select only needed columns
+  async getUserSummary(id: string) {
+    const [user] = await db.select({
+      id: users.id,
+      username: users.username,
+      email: users.email, // Don't select passwordHash
+    })
+    .from(users)
+    .where(eq(users.id, id))
+    .limit(1);
+    
+    return user;
   }
   
-  clientLimit.count++;
-  return true;
-};
-```
-
-### Security Headers and CORS
-```typescript
-// ✅ Good - Secure CORS configuration
-const corsOptions = {
-  origin: (origin: string | undefined) => {
-    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [];
-    return !origin || allowedOrigins.includes(origin) ? origin : null;
-  },
-  credentials: true,
-  optionsSuccessStatus: 200,
-  maxAge: 86400, // 24 hours
-};
-
-// ✅ Good - Security headers
-app.use('*', secureHeaders({
-  contentSecurityPolicy: {
-    defaultSrc: ["'self'"],
-    styleSrc: ["'self'", "'unsafe-inline'"],
-    scriptSrc: ["'self'"],
-    imgSrc: ["'self'", "data:", "https:"],
-  },
-  crossOriginEmbedderPolicy: false, // Adjust based on requirements
-}));
-```
-
-## Quality Gates and Standards
-
-### TypeScript Configuration
-```json
-// tsconfig.json - Strict configuration
-{
-  "compilerOptions": {
-    "strict": true,
-    "noImplicitAny": true,
-    "noImplicitReturns": true,
-    "noImplicitThis": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "exactOptionalPropertyTypes": true,
-    "noUncheckedIndexedAccess": true
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  // Use prepared statements for repeated queries
+  private findUserByIdStmt = db.select()
+    .from(users)
+    .where(eq(users.id, placeholder('id')))
+    .limit(1)
+    .prepare();
+  
+  async findUserByIdOptimized(id: string) {
+    const [user] = await this.findUserByIdStmt.execute({ id });
+    return user;
+  }
 }
 ```
 
-### Code Quality Standards
-- ❌ No `any` types allowed
-- ❌ No `@ts-ignore` or `@ts-nocheck` comments
-- ❌ No commented-out code in commits
-- ❌ No `console.log` statements in production builds
-- ❌ No hardcoded credentials or secrets
-- ❌ No TODO comments without issue references
-- ✅ All functions must have explicit return types
-- ✅ All async operations must handle errors
-- ✅ All user inputs must be validated
-- ✅ All database queries must be parameterized
-- ✅ All API endpoints must have rate limiting
-- ✅ All sensitive operations must be logged
+## Main Application Setup
 
-## Final Checklist
+### Enterprise App Configuration
+```typescript
+// app.ts
+import { Hono } from 'hono';
+import { logger } from 'hono/logger';
+import { requestId } from 'hono/request-id';
+import { setupRoutes } from './routes';
+import { corsMiddleware } from './middleware/cors';
+import { errorHandler } from './middleware/error-handler';
+import { env } from './env';
 
-### TypeScript Hono Code Quality Checklist
-- [ ] Strict TypeScript configuration enabled
-- [ ] All routes properly typed with Zod validation
-- [ ] Middleware chain properly ordered and implemented
-- [ ] Error handling with custom error classes
-- [ ] Authentication and authorization middleware
-- [ ] Rate limiting implemented
-- [ ] Request/response logging
-- [ ] CORS properly configured
-- [ ] Security headers applied
-- [ ] Input validation on all endpoints
-- [ ] Proper HTTP status codes used
-- [ ] API responses follow consistent format
-- [ ] Database queries optimized and safe
-- [ ] Environment variables properly typed
-- [ ] Comprehensive test coverage
-- [ ] Performance monitoring middleware
-- [ ] Request ID tracking for debugging
-- [ ] Graceful error responses in production
+const app = new Hono();
+
+// Global middleware
+app.use('*', requestId());
+app.use('*', logger());
+app.use('*', corsMiddleware);
+
+// Setup routes
+setupRoutes(app);
+
+// Error handling (must be last)
+app.onError(errorHandler);
+
+// 404 handler
+app.notFound((c) => {
+  return c.json({
+    error: 'Route not found',
+    success: false,
+    timestamp: new Date(),
+  }, 404);
+});
+
+export default app;
+```
+
+## Quality Checklist
+
+### Architecture Requirements
+- [ ] Environment variables validated with Zod in single env.ts file
+- [ ] Database connection created once in database/client.ts
+- [ ] Routes organized by feature in separate files
+- [ ] Handlers separated one per file in handlers/ directory
+- [ ] All routes and handlers fully typed with proper context
+- [ ] Middleware applied consistently with type safety
+
+### Type Safety Requirements
+- [ ] All API endpoints have input/output type definitions
+- [ ] Zod schemas for all validation
+- [ ] Database schema generates TypeScript types
+- [ ] No any types used anywhere
+- [ ] Context variables properly typed
+
+### Validation Requirements
+- [ ] All user inputs validated with Zod
+- [ ] Custom validation messages for user errors
+- [ ] Sanitization applied where needed
+- [ ] File upload validation if applicable
+
+### Error Handling Requirements
+- [ ] Centralized error handler implemented
+- [ ] HTTP status codes used correctly
+- [ ] Validation errors return 400 with details
+- [ ] Authentication errors return 401
+- [ ] Authorization errors return 403
+- [ ] Resource not found returns 404
+
+### Performance Requirements
+- [ ] Database queries use indexes
+- [ ] Select only needed columns
+- [ ] Prepared statements for repeated queries
+- [ ] Pagination implemented for list endpoints
+- [ ] Response caching where appropriate
+
+### Testing Requirements
+- [ ] Vitest configured for testing
+- [ ] Handler tests cover success and error cases
+- [ ] Database cleaned between tests
+- [ ] Type-safe test client used
+- [ ] Edge cases tested
+
+Remember: Always use typed approaches, validate environment variables, and organize code by feature for maximum maintainability!

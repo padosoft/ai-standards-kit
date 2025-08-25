@@ -39,141 +39,10 @@ Scalability:
   Cache: Distributed for unlimited scale
 ```
 
-## Database Optimization
+## Database and query Optimization
 
-### Query Performance Rules
-```sql
--- ✅ Good - Using covered index
-CREATE INDEX idx_users_email_covering 
-ON users(email) 
-INCLUDE (id, name, created_at);
+**Primary source for Database and query Optimization:** use `@db.md`
 
-SELECT id, name, created_at 
-FROM users 
-WHERE email = 'user@example.com';
-
--- ❌ Bad - No index usage
-SELECT * FROM users 
-WHERE LOWER(email) = 'user@example.com';
-```
-
-### Pagination Strategies
-```typescript
-// ✅ Good - Cursor-based pagination
-export class CursorPagination {
-  async getPage(cursor?: string, limit: number = 20): Promise<PageResult> {
-    const query = cursor
-      ? 'SELECT * FROM posts WHERE id > $1 ORDER BY id LIMIT $2'
-      : 'SELECT * FROM posts ORDER BY id LIMIT $1';
-    
-    const params = cursor ? [cursor, limit] : [limit];
-    const results = await db.query(query, params);
-    
-    return {
-      data: results.rows,
-      nextCursor: results.rows[results.rows.length - 1]?.id
-    };
-  }
-}
-
-// ✅ Good - Keyset pagination for complex sorting
-export class KeysetPagination {
-  async getPage(
-    lastScore?: number,
-    lastId?: string,
-    limit: number = 20
-  ): Promise<PageResult> {
-    const query = `
-      SELECT * FROM posts 
-      WHERE (score, id) < ($1, $2)
-      ORDER BY score DESC, id DESC
-      LIMIT $3
-    `;
-    
-    const results = await db.query(query, [
-      lastScore ?? Number.MAX_VALUE,
-      lastId ?? 'zzzzzzz',
-      limit
-    ]);
-    
-    return results.rows;
-  }
-}
-
-// ❌ Bad - OFFSET pagination (slow for large offsets)
-export class OffsetPagination {
-  async getPage(page: number, limit: number = 20): Promise<any[]> {
-    const offset = (page - 1) * limit;
-    // This gets slower as offset increases
-    const query = 'SELECT * FROM posts LIMIT $1 OFFSET $2';
-    return db.query(query, [limit, offset]);
-  }
-}
-```
-
-### N+1 Query Prevention
-```typescript
-// ❌ Bad - N+1 queries
-export class BadPostService {
-  async getPostsWithAuthors(): Promise<PostWithAuthor[]> {
-    const posts = await db.query('SELECT * FROM posts');
-    
-    // This causes N additional queries
-    for (const post of posts) {
-      post.author = await db.query(
-        'SELECT * FROM users WHERE id = $1',
-        [post.author_id]
-      );
-    }
-    
-    return posts;
-  }
-}
-
-// ✅ Good - Single query with JOIN
-export class GoodPostService {
-  async getPostsWithAuthors(): Promise<PostWithAuthor[]> {
-    const query = `
-      SELECT 
-        p.*,
-        u.id as author_id,
-        u.name as author_name,
-        u.email as author_email
-      FROM posts p
-      INNER JOIN users u ON p.author_id = u.id
-    `;
-    
-    return db.query(query);
-  }
-}
-
-// ✅ Good - Batch loading (DataLoader pattern)
-export class DataLoaderService {
-  private userLoader = new DataLoader(async (userIds: string[]) => {
-    const users = await db.query(
-      'SELECT * FROM users WHERE id = ANY($1)',
-      [userIds]
-    );
-    
-    const userMap = new Map(users.map(u => [u.id, u]));
-    return userIds.map(id => userMap.get(id));
-  });
-  
-  async getPostsWithAuthors(): Promise<PostWithAuthor[]> {
-    const posts = await db.query('SELECT * FROM posts');
-    
-    // Batch loads all unique author IDs in one query
-    const authors = await Promise.all(
-      posts.map(p => this.userLoader.load(p.author_id))
-    );
-    
-    return posts.map((post, i) => ({
-      ...post,
-      author: authors[i]
-    }));
-  }
-}
-```
 
 ### Database Connection Pooling
 ```typescript
@@ -1013,9 +882,7 @@ export class TracingService {
 ## Performance Checklist
 
 ### Backend Performance
-- [ ] Database queries use indexes
-- [ ] N+1 queries eliminated
-- [ ] Connection pooling configured
+- [ ] For Database and queries optimization use `@db.md`
 - [ ] Caching strategy implemented
 - [ ] Async operations optimized
 - [ ] Memory leaks prevented

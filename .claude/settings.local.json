@@ -15,7 +15,9 @@
       "Bash(rm:*)",
       "Bash(mv:*)",
       "Bash(aiscriptsdebug-control.bat status)",
-      "WebFetch(domain:hono.dev)"
+      "WebFetch(domain:hono.dev)",
+      "Read(/C:\\xampp\\htdocs\\mysqlbackup.sh/**)",
+      "Read(/C:\\xampp\\htdocs\\mysqlbackup.sh/**)"
     ],
     "deny": [],
     "ask": []

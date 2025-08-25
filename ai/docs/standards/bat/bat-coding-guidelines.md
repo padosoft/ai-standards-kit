@@ -1096,11 +1096,588 @@ endlocal
     endlocal & exit /b 0
 ```
 
+## Script Lifecycle Management
+
+### Script Initialization Pattern
+```batch
+@echo off
+:: ✅ Good - Standard script initialization
+setlocal EnableDelayedExpansion
+setlocal EnableExtensions
+
+:: Script metadata
+set "SCRIPT_NAME=%~nx0"
+set "SCRIPT_DIR=%~dp0"
+set "SCRIPT_VERSION=1.0.0"
+
+:: Enable UTF-8 for better character support
+chcp 65001 >nul 2>&1
+
+:: Start timestamp
+for /f "tokens=2 delims==" %%a in ('wmic OS Get localdatetime /value') do set "dt=%%a"
+set "START_TIME=%dt:~0,4%-%dt:~4,2%-%dt:~6,2%.%dt:~8,2%.%dt:~10,2%.%dt:~12,2%"
+echo [ROCKET] Script %SCRIPT_NAME% starts at %START_TIME%
+
+:: ✅ Good - Initialize constants and paths AFTER start message
+set "MYSQL_BIN=C:\xampp\mysql\bin\mysql.exe"
+set "MYSQLDUMP_BIN=C:\xampp\mysql\bin\mysqldump.exe"
+set "BACKUP_DIR=C:\backup"
+set "LOG_DIR=C:\logs\%SCRIPT_NAME:.bat=%"
+
+:: Default values (can be overridden by config)
+set "DEFAULT_USER=admin"
+set "DEFAULT_HOST=localhost"
+set "DEFAULT_PORT=3306"
+
+:: ✅ Good - Load configuration file if exists
+set "CONFIG_FILE=%SCRIPT_DIR%%SCRIPT_NAME:.bat=%.config"
+if exist "%CONFIG_FILE%" (
+    echo [CONFIG] Loading settings from %CONFIG_FILE%
+    call "%CONFIG_FILE%"
+) else (
+    echo [INFO] Using default settings ^(config file not found: %CONFIG_FILE%^)
+)
+
+:: Apply defaults for unset variables
+if not defined DB_USER set "DB_USER=%DEFAULT_USER%"
+if not defined DB_HOST set "DB_HOST=%DEFAULT_HOST%"
+if not defined DB_PORT set "DB_PORT=%DEFAULT_PORT%"
+```
+
+### Help System Implementation
+```batch
+:: ✅ Good - Comprehensive help function
+:SHOW_HELP
+    echo.
+    echo NAME
+    echo     %SCRIPT_NAME% - Database backup utility
+    echo.
+    echo SYNOPSIS
+    echo     %SCRIPT_NAME% [OPTIONS] [DATABASE...]
+    echo.
+    echo DESCRIPTION
+    echo     Performs MySQL database backups with compression and verification.
+    echo.
+    echo OPTIONS
+    echo     /h, /?, --help      Show this help message
+    echo     /v, --version       Show script version
+    echo     /u:USER             Database user (default: %DEFAULT_USER%)
+    echo     /p                  Prompt for database password
+    echo     /H:HOST             Database host (default: %DEFAULT_HOST%)
+    echo     /P:PORT             Database port (default: %DEFAULT_PORT%)
+    echo     /o:DIR              Output directory (default: %BACKUP_DIR%)
+    echo     /l:FILE             Log output to file
+    echo     /c:FILE             Use specific config file
+    echo     --dry-run           Show what would be done without executing
+    echo     --verbose           Enable verbose output
+    echo     --no-color          Disable colored output (not fully supported in CMD)
+    echo.
+    echo EXAMPLES
+    echo     REM Backup all databases
+    echo     %SCRIPT_NAME%
+    echo.
+    echo     REM Backup specific databases
+    echo     %SCRIPT_NAME% mydb1 mydb2
+    echo.
+    echo     REM Backup with custom output directory
+    echo     %SCRIPT_NAME% /o:D:\custom\backup\path
+    echo.
+    echo     REM Backup with logging
+    echo     %SCRIPT_NAME% /l:backup.log
+    echo.
+    echo CONFIGURATION
+    echo     Config file: %CONFIG_FILE%
+    echo     Create from template: copy "%SCRIPT_NAME:.bat=%.config.template" "%SCRIPT_NAME:.bat=%.config"
+    echo.
+    echo AUTHOR
+    echo     Written by Your Team
+    echo.
+    echo REPORTING BUGS
+    echo     Report bugs to: bugs@example.com
+    echo.
+    echo COPYRIGHT
+    echo     Copyright (C) 2025 Your Organization
+    echo     License: MIT
+    echo.
+    exit /b 0
+
+:: ✅ Good - Version function
+:SHOW_VERSION
+    echo %SCRIPT_NAME% version %SCRIPT_VERSION%
+    echo Copyright (C) 2025 Your Organization
+    exit /b 0
+```
+
+### Argument Parsing Pattern
+```batch
+:: ✅ Good - Robust argument parsing
+:PARSE_ARGUMENTS
+    set "DATABASES="
+    set "LOG_FILE="
+    set "VERBOSE=false"
+    set "DRY_RUN=false"
+    set "NO_COLOR=false"
+    set "SHOW_HELP=false"
+    
+    :: Check for no arguments
+    if "%~1"=="" (
+        echo [INFO] No arguments provided. Use /? or --help for usage information.
+    )
+    
+    :PARSE_LOOP
+    if "%~1"=="" goto :END_PARSE
+    
+    set "ARG=%~1"
+    
+    :: Check for help
+    if /i "%ARG%"=="/?" set "SHOW_HELP=true" & goto :NEXT_ARG
+    if /i "%ARG%"=="/h" set "SHOW_HELP=true" & goto :NEXT_ARG
+    if /i "%ARG%"=="--help" set "SHOW_HELP=true" & goto :NEXT_ARG
+    
+    :: Check for version
+    if /i "%ARG%"=="/v" call :SHOW_VERSION & exit /b 0
+    if /i "%ARG%"=="--version" call :SHOW_VERSION & exit /b 0
+    
+    :: Check for user
+    if /i "%ARG:~0,3%"=="/u:" (
+        set "DB_USER=%ARG:~3%"
+        if "!DB_USER!"=="" (
+            echo [ERROR] /u: requires a username >&2
+            call :SHOW_HELP
+            exit /b 1
+        )
+        goto :NEXT_ARG
+    )
+    
+    :: Check for password prompt
+    if /i "%ARG%"=="/p" (
+        set /p "DB_PASSWORD=Enter password: "
+        goto :NEXT_ARG
+    )
+    
+    :: Check for host
+    if /i "%ARG:~0,3%"=="/H:" (
+        set "DB_HOST=%ARG:~3%"
+        if "!DB_HOST!"=="" (
+            echo [ERROR] /H: requires a hostname >&2
+            call :SHOW_HELP
+            exit /b 1
+        )
+        goto :NEXT_ARG
+    )
+    
+    :: Check for port
+    if /i "%ARG:~0,3%"=="/P:" (
+        set "DB_PORT=%ARG:~3%"
+        echo !DB_PORT! | findstr /r "^[0-9][0-9]*$" >nul
+        if !ERRORLEVEL! NEQ 0 (
+            echo [ERROR] /P: requires a numeric port >&2
+            call :SHOW_HELP
+            exit /b 1
+        )
+        goto :NEXT_ARG
+    )
+    
+    :: Check for output directory
+    if /i "%ARG:~0,3%"=="/o:" (
+        set "BACKUP_DIR=%ARG:~3%"
+        if "!BACKUP_DIR!"=="" (
+            echo [ERROR] /o: requires a directory path >&2
+            call :SHOW_HELP
+            exit /b 1
+        )
+        goto :NEXT_ARG
+    )
+    
+    :: Check for log file
+    if /i "%ARG:~0,3%"=="/l:" (
+        set "LOG_FILE=%ARG:~3%"
+        if "!LOG_FILE!"=="" (
+            :: Auto-generate log filename
+            for /f "tokens=2 delims==" %%a in ('wmic OS Get localdatetime /value') do set "dt=%%a"
+            set "LOG_FILE=%LOG_DIR%\%SCRIPT_NAME:.bat=%_!dt:~0,4!-!dt:~4,2!-!dt:~6,2!-!dt:~8,2!-!dt:~10,2!-!dt:~12,2!.log"
+        )
+        goto :NEXT_ARG
+    )
+    
+    :: Check for config file
+    if /i "%ARG:~0,3%"=="/c:" (
+        set "CONFIG_FILE=%ARG:~3%"
+        if not exist "!CONFIG_FILE!" (
+            echo [ERROR] Config file not found: !CONFIG_FILE! >&2
+            call :SHOW_HELP
+            exit /b 1
+        )
+        call "!CONFIG_FILE!"
+        goto :NEXT_ARG
+    )
+    
+    :: Check for flags
+    if /i "%ARG%"=="--dry-run" set "DRY_RUN=true" & goto :NEXT_ARG
+    if /i "%ARG%"=="--verbose" set "VERBOSE=true" & goto :NEXT_ARG
+    if /i "%ARG%"=="--no-color" set "NO_COLOR=true" & goto :NEXT_ARG
+    
+    :: Unknown option check
+    if "%ARG:~0,1%"=="/" (
+        echo [ERROR] Unknown option: %ARG% >&2
+        call :SHOW_HELP
+        exit /b 1
+    )
+    if "%ARG:~0,2%"=="--" (
+        echo [ERROR] Unknown option: %ARG% >&2
+        call :SHOW_HELP
+        exit /b 1
+    )
+    
+    :: Assume it's a database name
+    if defined DATABASES (
+        set "DATABASES=%DATABASES% %ARG%"
+    ) else (
+        set "DATABASES=%ARG%"
+    )
+    
+    :NEXT_ARG
+    shift
+    goto :PARSE_LOOP
+    
+    :END_PARSE
+    
+    :: Show help if requested
+    if "%SHOW_HELP%"=="true" (
+        call :SHOW_HELP
+        exit /b 0
+    )
+    
+    :: Validate arguments
+    call :VALIDATE_ARGUMENTS
+    exit /b %ERRORLEVEL%
+
+:VALIDATE_ARGUMENTS
+    :: Check for required tools
+    if not exist "%MYSQL_BIN%" (
+        echo [ERROR] Required tool not found: %MYSQL_BIN% >&2
+        exit /b 1
+    )
+    if not exist "%MYSQLDUMP_BIN%" (
+        echo [ERROR] Required tool not found: %MYSQLDUMP_BIN% >&2
+        exit /b 1
+    )
+    
+    :: Check output directory
+    if not exist "%BACKUP_DIR%" (
+        echo [WARNING] Output directory does not exist: %BACKUP_DIR%
+        echo Creating directory...
+        mkdir "%BACKUP_DIR%" 2>nul
+        if !ERRORLEVEL! NEQ 0 (
+            echo [ERROR] Failed to create output directory >&2
+            exit /b 1
+        )
+    )
+    
+    :: Create log directory if needed
+    if defined LOG_FILE (
+        for %%F in ("%LOG_FILE%") do set "LOG_DIR_PATH=%%~dpF"
+        if not exist "!LOG_DIR_PATH!" (
+            mkdir "!LOG_DIR_PATH!" 2>nul
+        )
+    )
+    
+    exit /b 0
+```
+
+### Enhanced Logging with Icons
+```batch
+:: ✅ Good - Enhanced logging functions
+:: Note: Windows CMD has limited support for colors and Unicode icons
+:: Using ASCII alternatives and color codes where supported
+
+:LOG_MESSAGE
+    setlocal
+    set "LEVEL=%~1"
+    set "MESSAGE=%~2"
+    
+    :: Get timestamp
+    for /f "tokens=2 delims==" %%a in ('wmic OS Get localdatetime /value') do set "dt=%%a"
+    set "TIMESTAMP=%dt:~0,4%-%dt:~4,2%-%dt:~6,2% %dt:~8,2%:%dt:~10,2%:%dt:~12,2%"
+    set "LOG_ENTRY=[%TIMESTAMP%] [%LEVEL%] %MESSAGE%"
+    
+    :: Console output with icons (ASCII alternatives for better compatibility)
+    if /i "%LEVEL%"=="SUCCESS" (
+        echo [OK] %MESSAGE%
+    ) else if /i "%LEVEL%"=="ERROR" (
+        echo [ERROR] %MESSAGE% >&2
+    ) else if /i "%LEVEL%"=="WARNING" (
+        echo [WARN] %MESSAGE%
+    ) else if /i "%LEVEL%"=="INFO" (
+        echo [INFO] %MESSAGE%
+    ) else if /i "%LEVEL%"=="RUNNING" (
+        echo [RUN] %MESSAGE%
+    ) else if /i "%LEVEL%"=="DEBUG" (
+        if "%VERBOSE%"=="true" (
+            echo [DEBUG] %MESSAGE%
+        )
+    ) else (
+        echo %MESSAGE%
+    )
+    
+    :: File logging (if enabled)
+    if defined LOG_FILE (
+        echo %LOG_ENTRY% >> "%LOG_FILE%"
+    )
+    
+    endlocal
+    exit /b 0
+
+:: Convenience functions
+:LOG_SUCCESS
+    call :LOG_MESSAGE "SUCCESS" "%~1"
+    exit /b 0
+
+:LOG_ERROR
+    call :LOG_MESSAGE "ERROR" "%~1"
+    exit /b 0
+
+:LOG_WARNING
+    call :LOG_MESSAGE "WARNING" "%~1"
+    exit /b 0
+
+:LOG_INFO
+    call :LOG_MESSAGE "INFO" "%~1"
+    exit /b 0
+
+:LOG_RUNNING
+    call :LOG_MESSAGE "RUNNING" "%~1"
+    exit /b 0
+
+:LOG_DEBUG
+    call :LOG_MESSAGE "DEBUG" "%~1"
+    exit /b 0
+
+:: ✅ Good - Progress indicator
+:SHOW_PROGRESS
+    setlocal EnableDelayedExpansion
+    set /a "CURRENT=%~1"
+    set /a "TOTAL=%~2"
+    set "TASK=%~3"
+    set /a "PERCENT=CURRENT*100/TOTAL"
+    
+    :: Build progress bar
+    set "BAR="
+    set /a "FILLED=PERCENT/2"
+    for /l %%i in (1,1,50) do (
+        if %%i LEQ !FILLED! (
+            set "BAR=!BAR!#"
+        ) else (
+            set "BAR=!BAR!-"
+        )
+    )
+    
+    :: Display progress (use <CR> to overwrite line)
+    <nul set /p "=[RUN] Progress: [!BAR!] !PERCENT!%% - !TASK!    "
+    
+    if %CURRENT% EQU %TOTAL% (
+        echo.
+        echo [OK] Progress: [##################################################] 100%% - Complete!
+    )
+    
+    endlocal
+    exit /b 0
+```
+
+### Script Completion Pattern
+```batch
+:: ✅ Good - Cleanup and exit handling
+:CLEANUP
+    set "EXIT_CODE=%~1"
+    if not defined EXIT_CODE set "EXIT_CODE=%ERRORLEVEL%"
+    
+    call :LOG_DEBUG "Performing cleanup..."
+    
+    :: Remove temporary files
+    if defined TEMP_DIR if exist "%TEMP_DIR%" (
+        rmdir /s /q "%TEMP_DIR%" 2>nul
+    )
+    
+    :: Calculate execution time
+    for /f "tokens=2 delims==" %%a in ('wmic OS Get localdatetime /value') do set "dt=%%a"
+    set "END_TIME=%dt:~0,4%-%dt:~4,2%-%dt:~6,2%.%dt:~8,2%.%dt:~10,2%.%dt:~12,2%"
+    
+    :: Calculate duration (simplified - for accurate calculation use PowerShell)
+    if defined START_TIME (
+        echo [INFO] Start time: %START_TIME%
+        echo [INFO] End time: %END_TIME%
+    )
+    
+    :: Final status message
+    if "%EXIT_CODE%"=="0" (
+        call :LOG_SUCCESS "Script completed successfully"
+    ) else (
+        call :LOG_ERROR "Script failed with exit code: %EXIT_CODE%"
+    )
+    
+    echo [STOP] Script %SCRIPT_NAME% finished at %END_TIME%
+    
+    :: Close log file if open
+    if defined LOG_FILE (
+        echo Log saved to: %LOG_FILE%
+    )
+    
+    endlocal
+    exit /b %EXIT_CODE%
+
+:: ✅ Good - Main function pattern
+:MAIN
+    :: Parse arguments
+    call :PARSE_ARGUMENTS %*
+    if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+    
+    :: Validate environment
+    call :VALIDATE_ARGUMENTS
+    if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
+    
+    :: Start main logic
+    call :LOG_INFO "Starting main process..."
+    
+    :: Your main logic here
+    if "%DRY_RUN%"=="true" (
+        call :LOG_WARNING "DRY RUN MODE - No actual changes will be made"
+    )
+    
+    :: Example task with progress
+    set /a "TOTAL_TASKS=10"
+    for /l %%i in (1,1,%TOTAL_TASKS%) do (
+        call :SHOW_PROGRESS %%i %TOTAL_TASKS% "Processing task %%i"
+        :: Simulate work
+        timeout /t 1 /nobreak >nul 2>&1
+    )
+    
+    call :LOG_SUCCESS "All tasks completed successfully"
+    
+    :: Cleanup and exit
+    call :CLEANUP 0
+    exit /b 0
+
+:: Entry point
+call :MAIN %*
+exit /b %ERRORLEVEL%
+```
+
+### Configuration File Template
+```batch
+:: ✅ Good - Configuration file template
+:: Create template file
+:CREATE_CONFIG_TEMPLATE
+    set "TEMPLATE_FILE=%SCRIPT_NAME:.bat=%.config.template"
+    (
+        echo @echo off
+        echo :: Configuration file for %SCRIPT_NAME%
+        echo :: Copy this file to %SCRIPT_NAME:.bat=%.config and customize values
+        echo.
+        echo :: Database settings
+        echo set "DB_USER=admin"
+        echo set "DB_HOST=localhost"
+        echo set "DB_PORT=3306"
+        echo set "DB_NAME=mydb"
+        echo.
+        echo :: Paths ^(use absolute paths^)
+        echo set "BACKUP_DIR=C:\backup"
+        echo set "LOG_DIR=C:\logs"
+        echo set "TEMP_DIR=%TEMP%"
+        echo.
+        echo :: Tool paths
+        echo set "MYSQL_BIN=C:\xampp\mysql\bin\mysql.exe"
+        echo set "MYSQLDUMP_BIN=C:\xampp\mysql\bin\mysqldump.exe"
+        echo.
+        echo :: Options
+        echo set "COMPRESSION=gzip"  :: Options: gzip, 7z, zip, none
+        echo set "RETENTION_DAYS=30"  :: Days to keep backups
+        echo set "PARALLEL_JOBS=4"    :: Number of parallel jobs
+        echo set "VERBOSE=false"      :: Enable verbose output
+        echo set "NO_COLOR=false"     :: Disable colored output
+        echo.
+        echo :: Email notifications ^(optional^)
+        echo set "EMAIL_TO="
+        echo set "EMAIL_FROM="
+        echo set "EMAIL_ON_SUCCESS=false"
+        echo set "EMAIL_ON_FAILURE=true"
+        echo.
+        echo :: Custom settings
+        echo :: Add your custom settings here
+    ) > "%TEMPLATE_FILE%"
+    echo Configuration template created: %TEMPLATE_FILE%
+    exit /b 0
+```
+
+### Complete Script Template
+```batch
+@echo off
+:: ✅ Good - Complete script template following all guidelines
+setlocal EnableDelayedExpansion
+setlocal EnableExtensions
+
+:: Script metadata
+set "SCRIPT_NAME=%~nx0"
+set "SCRIPT_DIR=%~dp0"
+set "SCRIPT_VERSION=1.0.0"
+
+:: Enable UTF-8
+chcp 65001 >nul 2>&1
+
+:: Start timestamp
+for /f "tokens=2 delims==" %%a in ('wmic OS Get localdatetime /value') do set "dt=%%a"
+set "START_TIME=%dt:~0,4%-%dt:~4,2%-%dt:~6,2%.%dt:~8,2%.%dt:~10,2%.%dt:~12,2%"
+echo [START] Script %SCRIPT_NAME% starts at %START_TIME%
+
+:: Initialize constants AFTER start message
+set "TOOL_BIN=C:\Program Files\Tool\tool.exe"
+set "OUTPUT_DIR=C:\output"
+set "LOG_DIR=C:\logs"
+
+:: Load config if exists
+set "CONFIG_FILE=%SCRIPT_DIR%%SCRIPT_NAME:.bat=%.config"
+if exist "%CONFIG_FILE%" (
+    echo [CONFIG] Loading settings from %CONFIG_FILE%
+    call "%CONFIG_FILE%"
+) else (
+    echo [INFO] Using default settings
+)
+
+:: Main execution
+goto :MAIN
+
+:: [Include all functions defined above]
+
+:MAIN
+    call :PARSE_ARGUMENTS %*
+    if %ERRORLEVEL% NEQ 0 goto :EOF
+    
+    :: Your main logic here
+    call :LOG_INFO "Executing main task..."
+    
+    :: Success
+    call :CLEANUP 0
+    goto :EOF
+
+:EOF
+endlocal
+exit /b %ERRORLEVEL%
+```
+
 ## Final Checklist
 
 ### BAT/CMD Script Quality Checklist
 - [ ] `@echo off` at script start
 - [ ] `setlocal` to prevent environment pollution
+- [ ] Start message with timestamp
+- [ ] Constants initialized in UPPERCASE after start message
+- [ ] Full paths for all executables in variables
+- [ ] Configuration file support with automatic loading
+- [ ] Comprehensive help system (/?, /h, --help)
+- [ ] Argument validation with clear error messages
+- [ ] Icon-enhanced output (ASCII alternatives for compatibility)
+- [ ] Progress indicators for long operations
+- [ ] Logging to file support (automatic filename generation)
+- [ ] Finish message with timestamp
 - [ ] All variables properly quoted
 - [ ] Input validation implemented
 - [ ] Error handling with meaningful messages
@@ -1109,7 +1686,6 @@ endlocal
 - [ ] Local variables with setlocal/endlocal
 - [ ] Consistent naming conventions
 - [ ] Proper exit codes used
-- [ ] Logging system implemented
 - [ ] Script tested on target Windows versions
 - [ ] Documentation for complex functions
 - [ ] Security considerations addressed

@@ -1,0 +1,133 @@
+{
+  "mcp_servers": {
+    "database": {
+      "mysql_benborla": {
+        "command": "npx",
+        "args": ["-y", "@benborla/mcp-server-mysql"],
+        "env": {
+          "MYSQL_HOST": "${DB_HOST}",
+          "MYSQL_USER": "${DB_USER}",
+          "MYSQL_PASSWORD": "${DB_PASSWORD}",
+          "MYSQL_DATABASE": "${DB_NAME}",
+          "MYSQL_PORT": "${DB_PORT:-3306}"
+        },
+        "adapter": "@adapters/mysql-benborla-adapter",
+        "provider_type": "database"
+      },
+      "mysql_googleapis": {
+        "command": "npx",
+        "args": ["-y", "@googleapis/genai-toolbox"],
+        "env": {
+          "MYSQL_HOST": "${DB_HOST}",
+          "MYSQL_USER": "${DB_USER}",
+          "MYSQL_PASSWORD": "${DB_PASSWORD}",
+          "MYSQL_DATABASE": "${DB_NAME}"
+        },
+        "adapter": "@adapters/mysql-google-adapter",
+        "provider_type": "database"
+      }
+    },
+    "search": {
+      "elasticsearch_official": {
+        "command": "npx",
+        "args": ["-y", "@elastic/mcp-server-elasticsearch"],
+        "env": {
+          "ELASTICSEARCH_URL": "${ELASTICSEARCH_URL}",
+          "ELASTICSEARCH_API_KEY": "${ELASTICSEARCH_API_KEY}",
+          "ELASTICSEARCH_CLOUD_ID": "${ELASTICSEARCH_CLOUD_ID}",
+          "ELASTICSEARCH_USERNAME": "${ELASTICSEARCH_USERNAME}",
+          "ELASTICSEARCH_PASSWORD": "${ELASTICSEARCH_PASSWORD}"
+        },
+        "adapter": "@adapters/elastic-official-adapter",
+        "provider_type": "search"
+      },
+      "opensearch": {
+        "command": "npx",
+        "args": ["-y", "@opensearch/mcp-server"],
+        "env": {
+          "OPENSEARCH_URL": "${OPENSEARCH_URL}",
+          "OPENSEARCH_USERNAME": "${OPENSEARCH_USERNAME}",
+          "OPENSEARCH_PASSWORD": "${OPENSEARCH_PASSWORD}"
+        },
+        "adapter": "@adapters/opensearch-adapter",
+        "provider_type": "search"
+      }
+    },
+    "vcs": {
+      "github_official": {
+        "command": "npx",
+        "args": ["-y", "@github/github-mcp-server"],
+        "env": {
+          "GITHUB_TOKEN": "${GITHUB_TOKEN}",
+          "GITHUB_REPO": "${GITHUB_REPO}"
+        },
+        "adapter": "@adapters/github-official-adapter",
+        "provider_type": "vcs"
+      }
+    },
+    "cache": {
+      "redis": {
+        "command": "npx",
+        "args": ["-y", "@mcp/redis-server"],
+        "env": {
+          "REDIS_URL": "${REDIS_URL}",
+          "REDIS_PASSWORD": "${REDIS_PASSWORD}"
+        },
+        "adapter": "@adapters/redis-adapter",
+        "provider_type": "cache"
+      }
+    },
+    "monitoring": {
+      "datadog": {
+        "command": "npx",
+        "args": ["-y", "@datadog/mcp-server"],
+        "env": {
+          "DD_API_KEY": "${DD_API_KEY}",
+          "DD_APP_KEY": "${DD_APP_KEY}",
+          "DD_SITE": "${DD_SITE:-datadoghq.com}"
+        },
+        "adapter": "@adapters/datadog-adapter",
+        "provider_type": "monitoring"
+      }
+    }
+  },
+  "active_providers": {
+    "database": "mysql_benborla",
+    "search": "elasticsearch_official",
+    "vcs": "github_official",
+    "cache": "redis",
+    "monitoring": "datadog"
+  },
+  "detective_config": {
+    "mode": "analysis",
+    "auto_fix": false,
+    "pr_approval_required": true,
+    "max_retries": 3,
+    "timeout_ms": 300000,
+    "log_retention_days": 7,
+    "batch_size": 100,
+    "parallel_agents": 3
+  },
+  "thresholds": {
+    "error_rate": {
+      "warning": 0.01,
+      "critical": 0.05
+    },
+    "response_time_p95": {
+      "warning": 1000,
+      "critical": 3000
+    },
+    "database_query_time": {
+      "warning": 100,
+      "critical": 500
+    },
+    "cache_hit_rate": {
+      "warning": 0.8,
+      "critical": 0.6
+    },
+    "memory_usage": {
+      "warning": 0.8,
+      "critical": 0.95
+    }
+  }
+}

@@ -310,32 +310,68 @@ Create a **complete enterprise AI standards toolkit** named `@padosoft/ai-standa
   - [ ] Handle missing dependencies gracefully
 
 ### Phase 8: Node Command Builder Features
-- [ ] **8.1** Implement Node Command Builder Agent
-  - [ ] Create `ai/.claude/agents/global/node-command-builder.md`
-  - [ ] ASCII art banner with purple color (\x1b[95m)
-  - [ ] Professional Logger class with verbose mode
-  - [ ] Help system with global/local/npx examples
-  - [ ] Test mode (--test) for safe execution
-  - [ ] Verbose mode (--verbose) with HTTP logging
-  - [ ] DateTime tracking (start/end/duration)
-  - [ ] Configuration management (JSON + env)
-  - [ ] Module detection for both global and local execution
-  - [ ] Short alias support in package.json bin entries
+- [x] **8.1** Implement Node Command Builder Agent
+  - [x] Create `ai/.claude/agents/global/node-command-builder.md`
+  - [x] ASCII art banner with purple color (\x1b[95m)
+  - [x] Professional Logger class with verbose mode
+  - [x] Help system with global/local/npx examples
+  - [x] Test mode (--test) for safe execution
+  - [x] Verbose mode (--verbose) with HTTP logging
+  - [x] DateTime tracking (start/end/duration)
+  - [x] Configuration management (JSON + env)
+  - [x] Module detection for both global and local execution
+  - [x] Short alias support in package.json bin entries
 
-- [ ] **8.2** Test Example Command
-  - [ ] Create `src/example-command.ts` demonstrating all features
-  - [ ] Banner displays correctly with color
-  - [ ] Help command shows installation methods
-  - [ ] Test mode prevents destructive operations
-  - [ ] Verbose mode shows HTTP requests/responses with timing
-  - [ ] Configuration loads from environment variables
-  - [ ] Both global and local execution work correctly
+- [x] **8.2** Test Example Command
+  - [x] Create `src/example-command.ts` demonstrating all features
+  - [x] Banner displays correctly with color
+  - [x] Help command shows installation methods
+  - [x] Test mode prevents destructive operations
+  - [x] Verbose mode shows HTTP requests/responses with timing
+  - [x] Configuration loads from environment variables
+  - [x] Both global and local execution work correctly
 
-- [ ] **8.3** Documentation Updates
-  - [ ] Update README.md with node-command-builder section
-  - [ ] Add agent to list of global agents
-  - [ ] Include example usage and output
-  - [ ] Document all automatic features
+- [x] **8.3** Documentation Updates
+  - [x] Update README.md with node-command-builder section
+  - [x] Add agent to list of global agents
+  - [x] Include example usage and output
+  - [x] Document all automatic features
+
+### Phase 8.5: Debugging Detective System (NEW)
+- [x] **8.5.1** Implement Detective Architecture
+  - [x] Create `ai/.claude/agents/detective/debugging-detective.md` - Main orchestrator
+  - [x] Create `ai/.claude/agents/detective/error-triage.md` - Error analysis specialist
+  - [x] Create `ai/.claude/agents/detective/perf-doctor.md` - Performance optimization specialist  
+  - [x] Create `ai/.claude/agents/detective/sql-surgeon.md` - Database performance specialist
+
+- [x] **8.5.2** Implement Provider Abstraction Layer
+  - [x] Create `ai/.claude/providers/database-provider.md` - Abstract database interface
+  - [x] Create `ai/.claude/providers/search-provider.md` - Abstract search interface
+  - [x] Create `ai/.claude/providers/provider-registry.json` - Provider registry with required methods
+
+- [x] **8.5.3** Implement MCP Adapters
+  - [x] Create `ai/.claude/adapters/mysql-benborla-adapter.md` - benborla/mcp-server-mysql adapter
+  - [x] Create `ai/.claude/adapters/elastic-official-adapter.md` - elastic/mcp-server-elasticsearch adapter
+  - [x] Each adapter implements provider interface with error handling and performance optimization
+
+- [x] **8.5.4** Configuration and Control System
+  - [x] Create `ai/.claude/config/mcp-providers.json` - MCP server configurations with environment variables
+  - [x] Create `ai/.claude/config/detective-settings.json` - Detective operational settings and thresholds
+  - [x] Create `detective-control.sh` - Unix control script with health checks and logs
+  - [x] Create `detective-control.ps1` - Windows PowerShell control script
+  - [x] Implement operation modes: analysis (read-only), stage (PR workflow), production (auto-fix)
+
+- [x] **8.5.5** Detective Documentation
+  - [x] Create comprehensive `ai/docs/detective/README.md` with architecture and usage
+  - [x] Create `ai/docs/detective/configuration-reference.md` with complete config reference
+  - [x] Document provider abstraction pattern for MCP server independence
+  - [x] Include integration examples for Laravel, Hono/Bun, and Elasticsearch
+
+- [x] **8.5.6** README Integration
+  - [x] Add Detective system overview with features and architecture
+  - [x] Document operation modes and control commands
+  - [x] Include supported integrations and MCP providers
+  - [x] Reference complete detective documentation
 
 ### Phase 9: Final Integration and Polish
 - [ ] **9.1** Complete Code Review

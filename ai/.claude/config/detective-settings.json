@@ -1,0 +1,125 @@
+{
+  "detective": {
+    "enabled": true,
+    "mode": "analysis",
+    "operation_modes": {
+      "analysis": {
+        "description": "Read-only analysis mode - no fixes applied",
+        "can_fix": false,
+        "can_create_pr": false,
+        "can_modify_code": false,
+        "requires_approval": false
+      },
+      "stage": {
+        "description": "Stage mode - can create PRs but requires approval",
+        "can_fix": true,
+        "can_create_pr": true,
+        "can_modify_code": true,
+        "requires_approval": true
+      },
+      "production": {
+        "description": "Production mode - can auto-fix issues",
+        "can_fix": true,
+        "can_create_pr": true,
+        "can_modify_code": true,
+        "requires_approval": false,
+        "auto_merge": false
+      }
+    },
+    "agents": {
+      "error-triage": {
+        "enabled": true,
+        "priority": 1,
+        "max_concurrent": 2,
+        "timeout_ms": 180000,
+        "specializes_in": [
+          "error_analysis",
+          "exception_clustering",
+          "stack_trace_analysis"
+        ]
+      },
+      "perf-doctor": {
+        "enabled": true,
+        "priority": 2,
+        "max_concurrent": 1,
+        "timeout_ms": 300000,
+        "specializes_in": [
+          "api_latency",
+          "memory_leaks",
+          "caching_optimization",
+          "query_optimization"
+        ]
+      },
+      "sql-surgeon": {
+        "enabled": true,
+        "priority": 2,
+        "max_concurrent": 1,
+        "timeout_ms": 240000,
+        "specializes_in": [
+          "n_plus_one_detection",
+          "index_optimization",
+          "query_analysis",
+          "database_performance"
+        ]
+      }
+    },
+    "scheduling": {
+      "analysis_interval": "*/15 * * * *",
+      "health_check_interval": "*/5 * * * *",
+      "deep_analysis_interval": "0 2 * * *",
+      "cleanup_interval": "0 3 * * 0"
+    },
+    "notifications": {
+      "webhook_url": "${DETECTIVE_WEBHOOK_URL}",
+      "slack_channel": "${DETECTIVE_SLACK_CHANNEL}",
+      "email_recipients": [],
+      "severity_filter": "warning"
+    },
+    "performance": {
+      "max_memory_mb": 1024,
+      "max_cpu_percent": 50,
+      "parallel_analysis": 3,
+      "batch_processing": true,
+      "result_caching": true,
+      "cache_ttl_minutes": 30
+    },
+    "quality_gates": {
+      "min_confidence_score": 0.8,
+      "require_test_coverage": true,
+      "max_fix_complexity": "medium",
+      "require_rollback_plan": true
+    },
+    "integrations": {
+      "laravel": {
+        "log_paths": [
+          "storage/logs/laravel.log",
+          "storage/logs/custom.log"
+        ],
+        "error_patterns": [
+          "\\[ERROR\\]",
+          "\\[CRITICAL\\]",
+          "PHP Fatal error"
+        ]
+      },
+      "hono_bun": {
+        "log_paths": [
+          "logs/app.log",
+          "logs/api.log"
+        ],
+        "error_patterns": [
+          "ERROR:",
+          "FATAL:",
+          "UnhandledPromiseRejection"
+        ]
+      },
+      "elasticsearch": {
+        "indices": [
+          "logs-*",
+          "metrics-*",
+          "errors-*"
+        ],
+        "retention_days": 30
+      }
+    }
+  }
+}

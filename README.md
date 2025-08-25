@@ -768,6 +768,97 @@ L'agente **`@ai-kit-debug-reporter`** genera report dettagliati con:
 - Quality gate enforcement results
 - Performance bottleneck identification
 
+## 🕵️ The Debugging Detective - Intelligent Log Analysis & Auto-Fixing
+
+Il nuovo sistema **Debugging Detective** aggiunge capacità di analisi automatica e auto-healing:
+
+### 🎯 Funzionalità Detective
+- **🔍 Error Analysis**: Cluster automatico errori Laravel/Hono/Elasticsearch
+- **⚡ Performance Doctor**: Ottimizzazione API, caching, memory leaks
+- **🗄️ SQL Surgeon**: Detection N+1, optimization indici, slow queries
+- **🤖 Auto-Fixing**: Fix automatici con workflow PR/approval
+- **📊 Intelligent Reports**: Report actionable con fix suggestions
+
+### 🏗️ Architettura Detective
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Debugging Detective                              │
+├─────────────────────────────────────────────────────────────────────┤
+│  Orchestrator (debugging-detective.md)                             │
+│  ├─ Coordina agenti specializzati                                   │
+│  ├─ Gestisce workflow analysis                                      │
+│  └─ Applica fix con approval                                        │
+├─────────────────────────────────────────────────────────────────────┤
+│  Specialized Agents                                                 │
+│  ├─ Error Triage (error-triage.md)                                 │
+│  ├─ Performance Doctor (perf-doctor.md)                            │
+│  └─ SQL Surgeon (sql-surgeon.md)                                   │
+├─────────────────────────────────────────────────────────────────────┤
+│  Provider Abstraction Layer                                        │
+│  ├─ Database Provider (database-provider.md)                       │
+│  ├─ Search Provider (search-provider.md)                           │
+│  └─ VCS Provider (vcs-provider.md)                                 │
+├─────────────────────────────────────────────────────────────────────┤
+│  MCP Adapters (Community Servers)                                  │
+│  ├─ MySQL: benborla/mcp-server-mysql                              │
+│  ├─ Elasticsearch: elastic/mcp-server-elasticsearch               │
+│  └─ GitHub: github/github-mcp-server                              │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 🎮 Modi Operativi Detective
+- **📊 Analysis Mode** - Solo lettura, genera report con suggestions
+- **🎭 Stage Mode** - Crea PR con fix, richiede approval
+- **🚀 Production Mode** - Auto-fix immediati con rollback safety
+
+### 🚀 Quick Start Detective
+```bash
+# Configurazione
+export DB_HOST="your-db-host"
+export ELASTICSEARCH_URL="your-es-url"
+export GITHUB_TOKEN="your-github-token"
+
+# Avvia detective
+./detective-control.sh start
+
+# Imposta modalità
+./detective-control.sh set-mode analysis  # Read-only
+./detective-control.sh set-mode stage     # PR workflow
+./detective-control.sh set-mode production # Auto-fix
+
+# Monitoring
+./detective-control.sh status  # Stato corrente
+./detective-control.sh analyze # Analisi immediata
+./detective-control.sh health  # Health check
+./detective-control.sh logs    # Monitoraggio logs
+```
+
+### 🎯 Integrazioni Supportate
+- **Laravel**: Log analysis, exception clustering, performance optimization
+- **Hono/Bun**: Error detection, API latency analysis, memory optimization
+- **Elasticsearch**: Log aggregation, metric analysis, alerting
+- **MySQL**: Slow query detection, index optimization, N+1 prevention
+
+### 📊 Provider Abstraction
+Il sistema usa **provider abstraction** per supportare diversi MCP servers:
+```json
+{
+  "active_providers": {
+    "database": "mysql_benborla",
+    "search": "elasticsearch_official",
+    "vcs": "github_official"
+  }
+}
+```
+
+### 🔧 Agenti Specializzati
+- **Error Triage**: Clustering errori, pattern recognition, stack trace analysis
+- **Performance Doctor**: API latency, memory leaks, caching optimization
+- **SQL Surgeon**: N+1 detection, index optimization, query analysis
+
+### 📚 Detective Documentation
+Per documentazione completa: [Detective README](ai/docs/detective/README.md)
+
 ## 🚀 Node Command Builder - Agente per CLI Professionali
 
 Il nuovo agente **`node-command-builder`** crea comandi CLI Node.js/TypeScript con standard enterprise:

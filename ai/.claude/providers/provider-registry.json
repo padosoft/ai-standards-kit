@@ -1,0 +1,57 @@
+{
+  "providers": {
+    "database": {
+      "interface": "@providers/database-provider",
+      "description": "Database query and analysis capabilities",
+      "required_methods": [
+        "executeQuery",
+        "explainQuery",
+        "getIndexes",
+        "analyzeTable",
+        "getSlowQueries"
+      ]
+    },
+    "search": {
+      "interface": "@providers/search-provider",
+      "description": "Log search and aggregation capabilities",
+      "required_methods": [
+        "search",
+        "aggregate",
+        "getHealth",
+        "getIndices",
+        "searchTemplate"
+      ]
+    },
+    "vcs": {
+      "interface": "@providers/vcs-provider",
+      "description": "Version control and PR management",
+      "required_methods": [
+        "createBranch",
+        "commit",
+        "push",
+        "openPR",
+        "runTests"
+      ]
+    },
+    "cache": {
+      "interface": "@providers/cache-provider",
+      "description": "Cache analysis and management",
+      "required_methods": [
+        "getStats",
+        "getSlowLog",
+        "analyzeKeys",
+        "getHitRate"
+      ]
+    },
+    "monitoring": {
+      "interface": "@providers/monitoring-provider",
+      "description": "System metrics and monitoring",
+      "required_methods": [
+        "getMetrics",
+        "getAlerts",
+        "getTraces",
+        "getSpans"
+      ]
+    }
+  }
+}

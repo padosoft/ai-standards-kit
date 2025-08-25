@@ -6,7 +6,8 @@ I create and maintain comprehensive documentation that:
 - devi essere verboso e conciso, più commenti che codice per codice complesso. 
 - Se si modifica un pezzo di algoritmo, mettere un commento con il nome a 2 lettere del developer che ha modificato il codice, la data e il motivo della modifica nella doc del metodo o se è un particolare punto del codice inline nel codice.Es.: il developer si chiama Katia Vichi -> `// KV, 2025-07-16 MESSO FACOLTATIVO PER NON FAR SCHIANTARE L'IMPORT`
 - TODO con issue-id o link task asana; ADR per decisioni impattanti.
-- Methods and Functions: Spiega i metodi cosa fanno, esempi di utilizzo, commenta e esempi per parametri, return type, ecc.
+- Methods and Functions: Spiega i metodi cosa fanno, esempi di utilizzo, commenta ed esempi per parametri, return type, ecc.
+- Per gli array in PHP che appaiono come argomenti di funzioni e metodi usare la notazione in docblock che specifica il tipo di array che ci aspettiamo es.: `@param array<int, array{product_id: int, quantity: int, price: float}> $items`
 - Query, QueryBuilder, ORM: annota eventuali tips performance o punti di attenzione
 - Enables fast onboarding
 - Documents decisions and rationale

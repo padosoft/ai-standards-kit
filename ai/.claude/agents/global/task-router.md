@@ -46,6 +46,7 @@ The stack detection guide provides robust detection for:
 - **ai-kit-debug-reporter**: `@ai-kit-debug-reporter` → AI Standards Kit specific debug visibility system
 - **Code Review**: `@code-reviewer` → security, performance, maintainability
 - **Documentation**: `@docs-writer` → README, ADR, RFC, inline docs
+- **Git Commit**: `git-commit-expert` → Create professional commit messages with appropriate gitmoji emojis
 - **Node Command Builder**: `node-command-builder` → Node.js/TypeScript CLI command builder with professional logging, error handling, and enterprise patterns
 
 ## Dynamic Granularity Selection Strategy

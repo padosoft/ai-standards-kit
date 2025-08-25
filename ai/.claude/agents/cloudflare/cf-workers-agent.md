@@ -1,3 +1,9 @@
+---
+name: cf-workers-agent
+description: Cloudflare Workers Development Agent Specialized agent for developing, deploying, and managing Cloudflare Workers applications. 
+tools: Read, Write, Edit, Glob
+---
+
 # Cloudflare Workers Development Agent
 
 ## Role

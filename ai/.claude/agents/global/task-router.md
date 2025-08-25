@@ -10,8 +10,9 @@ tools: Read, Grep, Glob, Bash, Task
 I orchestrate complex multi-step tasks by:
 1. Auto-detecting the project stack
 2. Routing to specialized sub-agents
-3. Falling back to micro-guides when agents don't exist
-4. Ensuring minimal context and maximum precision
+3. Falling back to stack specified micro-guides when agents don't exist
+4. Falling back to global micro-guides when stack specified micro-guides don't exist
+5. Ensuring minimal context and maximum precision
 
 ## Stack Detection
 
@@ -37,50 +38,15 @@ The stack detection guide provides robust detection for:
 
 ## Routing Matrix
 
-### PHP/Laravel
-- **Routes**: `@laravel-routes-architect` → routes/api.php, middleware, versioning
-- **Controllers**: `@laravel-controller-builder` → FormRequest, Policy, DTO
-- **Queries**: `@laravel-sql-optimizer` → keyset pagination, covered indexes
-- **Eloquent**: `@laravel-eloquent-expert` → scopes, eager loading, chunks
-- **Validation**: `@laravel-validator` → FormRequest, rules, messages
-- **Migrations**: `@laravel-migration-planner` → expand/contract, rollback
-- **Commands**: `@laravel-command-sage` → idempotent, progress, exit codes
-- **Errors**: `@laravel-error-strategist` → exceptions, handlers, logging
-- **API Docs**: `@laravel-api-doc-writer` → OpenAPI, examples
-- **Tests**: `@test-writer` → PHPUnit, data providers, mocks
+### Cloudflare Workers Agents
+- **Cloudflare Workers**: `@cf-workers-agent` → Cloudflare Workers Development Agent
 
-### TypeScript/Hono
-- **Routing**: `@ts-router-architect` → Hono routes, middleware chain
-- **Handlers**: `@ts-handler-builder` → async handlers, error boundaries
-- **Validation**: `@ts-validator` → Zod schemas, type inference
-- **Streaming**: `@ts-streaming-optimizer` → backpressure, chunks
-- **Errors**: `@ts-error-strategist` → error maps, fallbacks
-- **Performance**: `@ts-performance-auditor` → hot paths, profiling
-- **API Client**: `@ts-api-client-generator` → typed clients from OpenAPI
-- **Tests**: `@ts-test-writer` → Vitest, MSW, coverage
-
-### Cloudflare Workers
-- **Security**: `@worker-security-auditor` → headers, SSRF, secrets
-- **Caching**: `@worker-cache-strategist` → Cache API, KV, R2, Reserve
-- **Streaming**: `@worker-streaming-expert` → 103 Early Hints, TransformStream
-- **Limits**: `@worker-limits-guardian` → CPU time, subrequests, memory
-- **Observability**: `@worker-observability` → logs, traces, analytics
-- **Routing**: `@worker-routing-architect` → Hono on Workers, patterns
-
-### React Native
-- **Screens**: `@rn-screen-builder` → navigation, gestures, animations
-- **State**: `@rn-state-architect` → Zustand/Redux, persistence
-- **Networking**: `@rn-api-client-generator` → retry, offline, sync
-- **Performance**: `@rn-performance-auditor` → re-renders, FlatList
-- **Accessibility**: `@rn-accessibility-linter` → WCAG, screen readers
-- **Release**: `@rn-release-assistant` → signing, OTA, stores
-
-### Global (All Stacks)
-- **adapter-builder**: `@adapter-builder` → Researches and creates adapters for new AI tools for this package only
+### Global (All Stacks)  Agents
+- **Adapter Builder**: `@adapter-builder` → Researches and creates adapters for new AI tools for this package only
+- **ai-kit-debug-reporter**: `@ai-kit-debug-reporter` → AI Standards Kit specific debug visibility system
+- **Code Review**: `@code-reviewer` → security, performance, maintainability
 - **Documentation**: `@docs-writer` → README, ADR, RFC, inline docs
-- **Logging**: `@log-auditor` → structured, levels, correlation IDs
-- **Comments**: `@comment-linter` → meaningful, TODO+issue, no noise
-- **Review**: `@code-reviewer` → security, performance, maintainability
+- **Node Command Builder**: `node-command-builder` → Node.js/TypeScript CLI command builder with professional logging, error handling, and enterprise patterns
 
 ## Dynamic Granularity Selection Strategy
 

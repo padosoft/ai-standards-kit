@@ -20,7 +20,6 @@ Detection follows a hierarchical approach, checking from most specific to most g
 
 **Secondary Indicators:**
 - `.env` or `.env.example` with Laravel-specific vars (APP_KEY, DB_CONNECTION)
-- `bootstrap/app.php` exists
 - `config/app.php` with Laravel providers
 
 **Version Detection:**
@@ -34,8 +33,8 @@ composer show laravel/framework  # Exact package version
 #### Hono Framework
 **Primary Indicators:**
 - `package.json` with `"hono"` dependency
-- `wrangler.toml` (if Cloudflare Workers)
 - `src/index.ts` with Hono imports
+- `wrangler.toml` (if Cloudflare Workers with Hono)
 
 #### Express.js
 **Primary Indicators:**
@@ -60,11 +59,12 @@ composer show laravel/framework  # Exact package version
 - `wrangler.toml` in root OR any subfolder
 - `worker-configuration.d.ts` file
 - `src/index.ts` with `export default` handler
+- `package.json` with `"hono"` dependency (if using Hono in workers)
 
 **Environment Detection:**
 ```bash
 # Check if using Node.js or Bun
-test -f "bun.lockb" && echo "bun" || echo "node"
+test -f "bun.lock" && echo "bun" || echo "node"
 ```
 
 ### React Native

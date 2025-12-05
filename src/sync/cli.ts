@@ -46,7 +46,7 @@ function run(nodeFile: string, extraArgs: string[] = []) {
 
 function bootstrapUser() {
   banner();
-  const srcAI = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]):/, '$1:')), '../../../ai');
+  const srcAI = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]):/, '$1:')), '../../ai');
   const dstClaude = path.join(HOME, '.claude');
   const dstAI = path.join(HOME, '.ai-standards');
   

@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import fg from 'fast-glob';
 import yaml from 'js-yaml';
-import { ROOT, read, write, exists, detectStacks } from './utils.js';
+import { ROOT, HOME, read, write, exists, detectStacks } from './utils.js';
 
 interface Target {
   condition?: string;
@@ -109,8 +109,10 @@ function buildOutput(out: any) {
   const body = sections.join('\n\n---\n');
   const final = [header, body, footer].filter(Boolean).join('\n\n');
   
-  // Expand home directory
-  const outPath = out.path.replace(/^~\//, process.env.HOME + '/').replace(/^~\\/, process.env.HOME + '\\');
+  // Expand home directory (cross-platform)
+  const outPath = out.path.startsWith('~/') || out.path.startsWith('~\\')
+    ? path.join(HOME, out.path.slice(2))
+    : out.path;
   
   // Ensure directory exists
   const dir = path.dirname(outPath);

@@ -17,7 +17,9 @@
       "Bash(aiscriptsdebug-control.bat status)",
       "WebFetch(domain:hono.dev)",
       "Read(/C:\\xampp\\htdocs\\mysqlbackup.sh/**)",
-      "Read(/C:\\xampp\\htdocs\\mysqlbackup.sh/**)"
+      "Read(/C:\\xampp\\htdocs\\mysqlbackup.sh/**)",
+      "Bash(node:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

@@ -358,10 +358,24 @@ if (comprehensiveSection.size > 500lines) {
 ## 🚀 Installazione e Setup
 
 ### Setup Globale (una tantum)
-```bash
-# Installa il pacchetto globalmente
-npm i -g @padosoft/ai-standards
 
+#### Opzione 1: Da npm (se il pacchetto è pubblicato)
+```bash
+# Installa il pacchetto globalmente da npm
+npm i -g @padosoft/ai-standards
+```
+
+#### Opzione 2: Da cartella locale (sviluppo o pacchetto non pubblicato)
+```bash
+# Clona il repository o naviga alla cartella del progetto
+cd /path/to/ai-standards-kit
+
+# Installa globalmente dalla cartella locale
+npm i -g .
+```
+
+#### Dopo l'installazione
+```bash
 # Bootstrap: installa agenti Claude e file globali
 ai bootstrap --user
 
@@ -447,8 +461,10 @@ ai print --target=augment     # Stampa rules per Augment Code
 
 ### Setup Iniziale Completo
 ```bash
-# 1. Installa globalmente
-npm i -g @padosoft/ai-standards
+# 1. Installa globalmente (da npm o dalla cartella locale)
+npm i -g @padosoft/ai-standards   # Se pubblicato su npm
+# oppure
+npm i -g .                         # Dalla cartella locale del progetto
 
 # 2. Bootstrap globale
 ai bootstrap --user
@@ -486,8 +502,10 @@ Il **task-router** automaticamente:
 # Controlla automaticamente aggiornamenti
 ai check-updates
 
-# Aggiorna package globale
-npm update -g @padosoft/ai-standards
+# Aggiorna package globale (da npm o dalla cartella locale)
+npm update -g @padosoft/ai-standards  # Se pubblicato su npm
+# oppure
+npm i -g .                            # Dalla cartella locale del progetto
 
 # Aggiorna files locali da nuova versione
 ai update

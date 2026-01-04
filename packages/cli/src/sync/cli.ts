@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { parseArgv, detectStacks, read, write, exists, mkdirp, ROOT, HOME, checkForUpdates } from './utils.js';
+import { parseArgv, detectStacks, read, write, exists, mkdirp, ROOT, HOME, checkForUpdates, getStandardsPath, getCliPath } from './utils.js';
 import { harvest } from './harvest.js';
 import child_process from 'child_process';
 import path from 'path';
@@ -7,7 +7,18 @@ import os from 'os';
 import fs from 'fs';
 import fg from 'fast-glob';
 import yaml from 'js-yaml';
-import pkg from '../../package.json' with { type: 'json' };
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Get paths for standards and CLI packages
+const STANDARDS_PATH = getStandardsPath();
+const CLI_PATH = getCliPath();
+
+// Load package.json dynamically
+const pkgPath = path.join(CLI_PATH, 'package.json');
+const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
 
 function banner() {
   console.log('\x1b[95m' + `
@@ -46,31 +57,46 @@ function run(nodeFile: string, extraArgs: string[] = []) {
 
 function bootstrapUser() {
   banner();
-  const srcAI = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]):/, '$1:')), '../../ai');
+  // Use standards package as source for agents and docs
   const dstClaude = path.join(HOME, '.claude');
   const dstAI = path.join(HOME, '.ai-standards');
-  
-  // Copy Claude agents and settings
-  if (exists(path.join(srcAI, '.claude'))) {
-    fs.cpSync(path.join(srcAI, '.claude'), dstClaude, { recursive: true });
-    console.log('✓ Claude agents → ~/.claude');
+
+  console.log(`📁 Standards source: ${STANDARDS_PATH}`);
+
+  // Copy Claude agents from standards package
+  const agentsPath = path.join(STANDARDS_PATH, 'agents');
+  if (exists(agentsPath)) {
+    const agentsDst = path.join(dstClaude, 'agents');
+    mkdirp(agentsDst);
+    fs.cpSync(agentsPath, agentsDst, { recursive: true });
+    console.log('✓ Claude agents → ~/.claude/agents');
   }
-  
-  // Copy docs
-  if (exists(path.join(srcAI, 'docs'))) {
-    fs.cpSync(path.join(srcAI, 'docs'), path.join(dstAI, 'docs'), { recursive: true });
+
+  // Copy config from standards package
+  const configPath = path.join(STANDARDS_PATH, 'config');
+  if (exists(configPath)) {
+    const configDst = path.join(dstClaude, 'config');
+    mkdirp(configDst);
+    fs.cpSync(configPath, configDst, { recursive: true });
+    console.log('✓ Claude config → ~/.claude/config');
+  }
+
+  // Copy docs from standards package
+  const docsPath = path.join(STANDARDS_PATH, 'docs');
+  if (exists(docsPath)) {
+    fs.cpSync(docsPath, path.join(dstAI, 'docs'), { recursive: true });
     console.log('✓ Docs → ~/.ai-standards/docs');
   }
-  
+
   // Create dist directory
   mkdirp(path.join(dstAI, 'dist'));
-  
+
   // Run build to generate dist files
-  run(path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]):/, '$1:')), './build.js'), []);
-  
+  run(path.join(__dirname, './build.js'), []);
+
   // Copy to tool-specific global locations
   const distDir = path.join(HOME, '.ai-standards/dist');
-  
+
   // Copilot global (JetBrains)
   const copGlb = path.join(HOME, '.config/github-copilot/intellij/global-copilot-instructions.md');
   mkdirp(path.dirname(copGlb));
@@ -78,7 +104,7 @@ function bootstrapUser() {
     fs.copyFileSync(path.join(distDir, 'COPILOT_RULES.md'), copGlb);
     console.log('✓ Copilot global → ~/.config/github-copilot/intellij/');
   }
-  
+
   // Gemini global
   const gemGlb = path.join(HOME, '.gemini/GEMINI.md');
   mkdirp(path.dirname(gemGlb));
@@ -86,7 +112,7 @@ function bootstrapUser() {
     fs.copyFileSync(path.join(distDir, 'GEMINI_SYSTEM.md'), gemGlb);
     console.log('✓ Gemini global → ~/.gemini/');
   }
-  
+
   // OpenCode global
   const ocGlb = path.join(HOME, '.config/opencode/AGENTS.md');
   mkdirp(path.dirname(ocGlb));
@@ -94,7 +120,7 @@ function bootstrapUser() {
     fs.copyFileSync(path.join(distDir, 'OPENCODE_AGENTS.md'), ocGlb);
     console.log('✓ OpenCode global → ~/.config/opencode/');
   }
-  
+
   console.log('\n✓ Bootstrap complete. Global settings installed.');
 }
 
@@ -114,18 +140,18 @@ function writeCopilotHere(cwd: string) {
 
 function writeCursorHere(cwd: string, split: boolean = false) {
   const src = path.join(HOME, '.ai-standards/dist/CURSOR_RULES.md');
-  
+
   if (!exists(src)) {
     console.error('⚠ Source not found. Run "ai bootstrap --user" first.');
     return;
   }
-  
+
   const dir = path.join(cwd, '.cursor/rules');
   mkdirp(dir);
-  
+
   if (split) {
     // Generate multiple MDC files by category
-    const targetsPath = path.join(ROOT, 'adapters/config/targets.yml');
+    const targetsPath = path.join(CLI_PATH, 'adapters/config/targets.yml');
     const targets = yaml.load(read(targetsPath)) as any;
     
     // Parse content to split by category
@@ -494,9 +520,9 @@ async function main() {
     if (flags['with-harvest']) {
       harvest();
     }
-    
+
     // Run build to generate dist files
-    run(path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]):/, '$1:')), './build.js'), []);
+    run(path.join(__dirname, './build.js'), []);
     
     // Check for updates after sync completion
     await checkAndNotifyUpdates();
@@ -557,7 +583,7 @@ async function main() {
     break;
     
   case 'validate':
-    run(path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]):/, '$1:')), './validate.js'), []);
+    run(path.join(__dirname, './validate.js'), []);
     break;
     
   case 'check-updates':

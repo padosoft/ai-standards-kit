@@ -1,38 +1,29 @@
 {
-  "name": "@padosoft/ai-standards",
-  "version": "1.0.0",
-  "description": "Enterprise AI Engineering Standards & Agents toolkit for multi-stack development",
-  "type": "module",
-  "bin": {
-    "ai-standards": "dist/sync/cli.js",
-    "ai": "dist/sync/cli.js"
-  },
+  "name": "@padosoft/ai-enterprise",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Enterprise AI Engineering Platform - Standards, CLI Tools, and Parlant Orchestrator",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "postinstall": "npm run build",
-    "prepublishOnly": "npm run build"
-  },
-  "dependencies": {
-    "chalk": "^5.6.0",
-    "commander": "^14.0.0",
-    "date-fns": "^4.1.0",
-    "fast-glob": "^3.3.2",
-    "js-yaml": "^4.1.0"
-  },
-  "devDependencies": {
-    "@types/js-yaml": "^4.0.9",
-    "@types/node": "^20.10.0",
-    "typescript": "^5.3.3"
+    "build": "npm run build --workspaces",
+    "build:cli": "npm run build --workspace=@padosoft/ai-cli",
+    "build:orchestrator": "echo 'Python package - use pip install -e packages/orchestrator'",
+    "test": "npm run test --workspaces --if-present",
+    "clean": "rm -rf packages/*/dist packages/*/node_modules",
+    "prepare": "npm run build:cli"
   },
   "keywords": [
     "ai",
+    "enterprise",
+    "orchestrator",
+    "parlant",
     "claude",
     "copilot",
     "cursor",
     "gemini",
-    "opencode",
     "standards",
-    "enterprise",
     "agents",
     "multi-stack"
   ],
@@ -40,7 +31,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/padosoft/ai-standards-kit.git"
+    "url": "https://github.com/padosoft/ai-enterprise.git"
   },
   "engines": {
     "node": ">=18.0.0"

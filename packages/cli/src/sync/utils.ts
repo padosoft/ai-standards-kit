@@ -1,10 +1,49 @@
-
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const ROOT = process.cwd();
 export const HOME = os.homedir();
+
+// Get the path to the standards package (works in monorepo and installed package)
+export function getStandardsPath(): string {
+  // Try monorepo path first (../../standards from cli/src/sync)
+  const monorepoPath = path.resolve(__dirname, '../../../standards');
+  if (fs.existsSync(path.join(monorepoPath, 'package.json'))) {
+    return monorepoPath;
+  }
+
+  // Try node_modules resolution
+  try {
+    const standardsIndex = require.resolve('@padosoft/ai-standards');
+    return path.dirname(standardsIndex);
+  } catch {
+    // Fallback: try relative from cli package
+    const cliPackagePath = path.resolve(__dirname, '../../..');
+    const nodeModulesPath = path.join(cliPackagePath, 'node_modules/@padosoft/ai-standards');
+    if (fs.existsSync(nodeModulesPath)) {
+      return nodeModulesPath;
+    }
+  }
+
+  // Last resort: use root node_modules in monorepo
+  const rootNodeModules = path.resolve(__dirname, '../../../../node_modules/@padosoft/ai-standards');
+  if (fs.existsSync(rootNodeModules)) {
+    return rootNodeModules;
+  }
+
+  throw new Error('Could not find @padosoft/ai-standards package. Run npm install first.');
+}
+
+// Get the CLI package path (for adapters/templates)
+export function getCliPath(): string {
+  // From cli/src/sync -> cli
+  return path.resolve(__dirname, '../..');
+}
 export const read = (p: string) => fs.readFileSync(p, 'utf8');
 export const exists = (p: string) => fs.existsSync(p);
 export const mkdirp = (p: string) => fs.mkdirSync(p, { recursive: true });

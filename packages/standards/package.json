@@ -1,0 +1,39 @@
+{
+  "name": "@padosoft/ai-standards",
+  "version": "2.0.0",
+  "description": "Enterprise AI Standards - SSOT for agents, guides, quality gates, and documentation",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./agents/*": "./agents/*",
+    "./docs/*": "./docs/*",
+    "./config/*": "./config/*"
+  },
+  "files": [
+    "agents/",
+    "docs/",
+    "config/",
+    "scripts/",
+    "index.js"
+  ],
+  "scripts": {
+    "test": "echo 'No tests for static standards'"
+  },
+  "keywords": [
+    "ai",
+    "standards",
+    "enterprise",
+    "agents",
+    "guidelines",
+    "quality-gates",
+    "ssot"
+  ],
+  "author": "Padosoft",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/padosoft/ai-enterprise.git",
+    "directory": "packages/standards"
+  }
+}

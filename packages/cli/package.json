@@ -1,0 +1,55 @@
+{
+  "name": "@padosoft/ai-cli",
+  "version": "2.0.0",
+  "description": "CLI for AI Standards - sync, harvest, validate, and export to multiple AI tools",
+  "type": "module",
+  "bin": {
+    "ai-standards": "dist/sync/cli.js",
+    "ai": "dist/sync/cli.js"
+  },
+  "main": "dist/sync/cli.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@padosoft/ai-standards": "*",
+    "chalk": "^5.6.0",
+    "commander": "^14.0.0",
+    "date-fns": "^4.1.0",
+    "fast-glob": "^3.3.2",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3"
+  },
+  "files": [
+    "dist/",
+    "adapters/"
+  ],
+  "keywords": [
+    "ai",
+    "cli",
+    "claude",
+    "copilot",
+    "cursor",
+    "gemini",
+    "opencode",
+    "warp",
+    "windsurf",
+    "augment",
+    "standards"
+  ],
+  "author": "Padosoft",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/padosoft/ai-enterprise.git",
+    "directory": "packages/cli"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

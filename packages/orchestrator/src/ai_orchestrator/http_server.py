@@ -23,7 +23,14 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, AsyncIterator
 from dataclasses import dataclass, asdict
 
+from .db_mysql import DictCursor
+
 logger = logging.getLogger(__name__)
+
+
+def _cursor(conn) -> DictCursor:
+    """Create a DictCursor wrapper for the connection."""
+    return DictCursor(conn.cursor())
 
 # Check if required packages are available
 try:
@@ -56,14 +63,27 @@ class APIResponse:
         return asdict(self)
 
 
+def _json_serializer(obj):
+    """Custom JSON serializer for types not serializable by default."""
+    from decimal import Decimal
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
 def json_response(data: Any, status: int = 200) -> "JSONResponse":
     """Create a JSON response."""
+    import json as json_module
     if isinstance(data, APIResponse):
-        return JSONResponse(data.to_dict(), status_code=status)
-    return JSONResponse(
+        content = json_module.loads(json_module.dumps(data.to_dict(), default=_json_serializer))
+        return JSONResponse(content, status_code=status)
+    content = json_module.loads(json_module.dumps(
         APIResponse(success=True, data=data).to_dict(),
-        status_code=status
-    )
+        default=_json_serializer
+    ))
+    return JSONResponse(content, status_code=status)
 
 
 def error_response(error: str, status: int = 400) -> "JSONResponse":
@@ -93,7 +113,7 @@ async def health_check(request: Request) -> JSONResponse:
     try:
         pool = get_pool(load_db_config())
         with pool.connection() as conn:
-            cur = conn.cursor()
+            cur = _cursor(conn)
             cur.execute("SELECT 1")
         health["components"]["database"] = "healthy"
     except Exception as e:
@@ -117,7 +137,7 @@ async def get_stats(request: Request) -> JSONResponse:
     db = MySQLDB(load_db_config())
 
     with db._pool.connection() as conn:
-        cur = conn.cursor()
+        cur = _cursor(conn)
 
         # Run counts by status
         cur.execute("""
@@ -203,7 +223,7 @@ async def list_runs(request: Request) -> JSONResponse:
     db = MySQLDB(load_db_config())
 
     with db._pool.connection() as conn:
-        cur = conn.cursor()
+        cur = _cursor(conn)
 
         # Build query
         where_clauses = []
@@ -407,6 +427,729 @@ async def get_guidelines(request: Request) -> JSONResponse:
     })
 
 
+async def get_time_series(request: Request) -> JSONResponse:
+    """Get time series data for charts."""
+    from .db_mysql import MySQLDB, load_db_config
+
+    period = request.query_params.get("period", "24h")
+
+    # Parse period to interval
+    if period == "24h":
+        interval_hours = 24
+        bucket_minutes = 60  # 1 hour buckets
+    elif period == "7d":
+        interval_hours = 168
+        bucket_minutes = 360  # 6 hour buckets
+    elif period == "30d":
+        interval_hours = 720
+        bucket_minutes = 1440  # 1 day buckets
+    else:
+        interval_hours = 24
+        bucket_minutes = 60
+
+    db = MySQLDB(load_db_config())
+
+    with db._pool.connection() as conn:
+        cur = _cursor(conn)
+
+        # Runs completed over time
+        cur.execute(f"""
+            SELECT
+                DATE_FORMAT(completed_at, '%Y-%m-%dT%H:00:00') as timestamp,
+                COUNT(*) as value
+            FROM runs
+            WHERE completed_at > DATE_SUB(NOW(), INTERVAL {interval_hours} HOUR)
+                AND status = 'done'
+            GROUP BY DATE_FORMAT(completed_at, '%Y-%m-%dT%H:00:00')
+            ORDER BY timestamp
+        """)
+        completed = [{"timestamp": r["timestamp"], "value": r["value"]} for r in cur.fetchall()]
+
+        # Runs failed over time
+        cur.execute(f"""
+            SELECT
+                DATE_FORMAT(completed_at, '%Y-%m-%dT%H:00:00') as timestamp,
+                COUNT(*) as value
+            FROM runs
+            WHERE completed_at > DATE_SUB(NOW(), INTERVAL {interval_hours} HOUR)
+                AND status = 'failed'
+            GROUP BY DATE_FORMAT(completed_at, '%Y-%m-%dT%H:00:00')
+            ORDER BY timestamp
+        """)
+        failed = [{"timestamp": r["timestamp"], "value": r["value"]} for r in cur.fetchall()]
+
+    return json_response({
+        "runs_completed": completed,
+        "runs_failed": failed,
+        "period": period,
+    })
+
+
+async def get_detailed_stats(request: Request) -> JSONResponse:
+    """Get detailed stats for dashboard including today's data."""
+    from .db_mysql import MySQLDB, load_db_config
+
+    db = MySQLDB(load_db_config())
+
+    with db._pool.connection() as conn:
+        cur = _cursor(conn)
+
+        # Run counts by status
+        cur.execute("""
+            SELECT status, COUNT(*) as count
+            FROM runs
+            GROUP BY status
+        """)
+        runs_by_status = {row["status"]: row["count"] for row in cur.fetchall()}
+
+        # Today's runs
+        cur.execute("""
+            SELECT COUNT(*) as count
+            FROM runs
+            WHERE DATE(created_at) = CURDATE()
+        """)
+        total_runs_today = cur.fetchone()["count"]
+
+        # Active runs (running + pending)
+        active_runs = runs_by_status.get("running", 0) + runs_by_status.get("pending", 0)
+
+        # Total runs
+        total_runs = sum(runs_by_status.values())
+
+        # Success rate
+        completed = runs_by_status.get("done", 0)
+        failed = runs_by_status.get("failed", 0)
+        success_rate = (completed / (completed + failed) * 100) if (completed + failed) > 0 else 100
+
+        # Average duration
+        cur.execute("""
+            SELECT AVG(TIMESTAMPDIFF(SECOND, created_at, completed_at)) as avg_duration
+            FROM runs
+            WHERE status = 'done' AND completed_at IS NOT NULL
+        """)
+        avg_duration_raw = cur.fetchone()["avg_duration"]
+        avg_duration = float(avg_duration_raw) if avg_duration_raw else 0.0
+
+        # Today's steps
+        cur.execute("""
+            SELECT COUNT(*) as count
+            FROM steps
+            WHERE DATE(created_at) = CURDATE()
+        """)
+        total_steps_today = cur.fetchone()["count"]
+
+        # Total steps
+        cur.execute("SELECT COUNT(*) as count FROM steps")
+        total_steps = cur.fetchone()["count"]
+
+        # Retry rate
+        cur.execute("""
+            SELECT
+                SUM(CASE WHEN retry_count > 0 THEN 1 ELSE 0 END) as retried,
+                COUNT(*) as total
+            FROM steps
+        """)
+        retry_data = cur.fetchone()
+        retried = int(retry_data["retried"] or 0)
+        total = int(retry_data["total"] or 0)
+        retry_rate = float(retried / total * 100) if total > 0 else 0.0
+
+        # Trend (vs yesterday)
+        cur.execute("""
+            SELECT COUNT(*) as count
+            FROM runs
+            WHERE DATE(created_at) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)
+        """)
+        yesterday_runs = cur.fetchone()["count"]
+        runs_trend = total_runs_today - yesterday_runs if yesterday_runs > 0 else 0
+
+        # Tool usage
+        cur.execute("""
+            SELECT agent as tool, COUNT(*) as count
+            FROM steps
+            GROUP BY agent
+            ORDER BY count DESC
+            LIMIT 10
+        """)
+        tool_usage = {row["tool"]: row["count"] for row in cur.fetchall()}
+
+    return json_response({
+        "active_runs": active_runs,
+        "total_runs": total_runs,
+        "total_runs_today": total_runs_today,
+        "runs_by_status": runs_by_status,
+        "success_rate": round(success_rate, 1),
+        "avg_duration_seconds": round(avg_duration, 2),
+        "total_steps": total_steps,
+        "total_steps_today": total_steps_today,
+        "retry_rate": round(retry_rate, 1),
+        "runs_trend": runs_trend,
+        "tool_usage": tool_usage,
+    })
+
+
+async def get_detailed_health(request: Request) -> JSONResponse:
+    """Get detailed system health for dashboard."""
+    import psutil
+    from .db_mysql import get_pool, load_db_config
+
+    health = {
+        "status": "healthy",
+        "version": "2.1.0",
+        "uptime_seconds": 0,
+        "cpu_percent": 0,
+        "memory_percent": 0,
+        "memory_used": 0,
+        "memory_total": 0,
+        "disk_percent": 0,
+        "disk_used": 0,
+        "disk_total": 0,
+        "active_connections": 0,
+        "services": [],
+        "database": None,
+        "queue": None,
+    }
+
+    try:
+        # System metrics
+        health["cpu_percent"] = psutil.cpu_percent()
+        memory = psutil.virtual_memory()
+        health["memory_percent"] = memory.percent
+        health["memory_used"] = memory.used
+        health["memory_total"] = memory.total
+        disk = psutil.disk_usage("/")
+        health["disk_percent"] = disk.percent
+        health["disk_used"] = disk.used
+        health["disk_total"] = disk.total
+    except Exception:
+        pass
+
+    # Database check
+    try:
+        pool = get_pool(load_db_config())
+        start = time.time()
+        with pool.connection() as conn:
+            cur = _cursor(conn)
+            cur.execute("SELECT 1")
+            cur.fetchone()  # Must consume result before next query
+            latency_ms = (time.time() - start) * 1000
+
+            # Get connection count
+            cur.execute("SHOW STATUS LIKE 'Threads_connected'")
+            row = cur.fetchone()
+            connections = int(row["Value"]) if row else 0
+
+            # Get db size
+            cur.execute("""
+                SELECT
+                    SUM(data_length + index_length) as size_bytes,
+                    SUM(table_rows) as total_records
+                FROM information_schema.tables
+                WHERE table_schema = DATABASE()
+            """)
+            db_info = cur.fetchone()
+
+        health["services"].append({
+            "name": "MySQL Database",
+            "status": "healthy",
+            "latency_ms": round(latency_ms, 2),
+        })
+        health["database"] = {
+            "total_records": db_info["total_records"] or 0,
+            "size_bytes": db_info["size_bytes"] or 0,
+            "active_connections": connections,
+            "avg_query_ms": latency_ms,
+        }
+        health["active_connections"] = connections
+    except Exception as e:
+        health["status"] = "degraded"
+        health["services"].append({
+            "name": "MySQL Database",
+            "status": "unhealthy",
+            "message": str(e),
+        })
+
+    # Metrics service
+    try:
+        from .metrics import PROMETHEUS_AVAILABLE
+        health["services"].append({
+            "name": "Prometheus Metrics",
+            "status": "healthy" if PROMETHEUS_AVAILABLE else "disabled",
+        })
+    except Exception:
+        pass
+
+    # Queue stats (from runs table)
+    try:
+        pool = get_pool(load_db_config())
+        with pool.connection() as conn:
+            cur = _cursor(conn)
+            cur.execute("""
+                SELECT
+                    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+                    SUM(CASE WHEN status = 'running' THEN 1 ELSE 0 END) as processing,
+                    SUM(CASE WHEN status = 'done' AND DATE(completed_at) = CURDATE() THEN 1 ELSE 0 END) as completed_24h,
+                    SUM(CASE WHEN status = 'failed' AND DATE(completed_at) = CURDATE() THEN 1 ELSE 0 END) as failed_24h
+                FROM runs
+            """)
+            queue = cur.fetchone()
+            health["queue"] = {
+                "pending": queue["pending"] or 0,
+                "processing": queue["processing"] or 0,
+                "completed_24h": queue["completed_24h"] or 0,
+                "failed_24h": queue["failed_24h"] or 0,
+            }
+    except Exception:
+        pass
+
+    return json_response(health)
+
+
+# =============================================================================
+# WEBHOOKS API
+# =============================================================================
+
+async def list_webhooks(request: Request) -> JSONResponse:
+    """List all webhooks."""
+    from .db_mysql import MySQLDB, load_db_config
+
+    db = MySQLDB(load_db_config())
+
+    with db._pool.connection() as conn:
+        cur = _cursor(conn)
+        cur.execute("""
+            SELECT webhook_id, name, url, secret, events, enabled,
+                   created_at, last_triggered_at, failure_count
+            FROM webhooks
+            ORDER BY created_at DESC
+        """)
+
+        webhooks = []
+        for row in cur.fetchall():
+            webhooks.append({
+                "webhook_id": row["webhook_id"],
+                "name": row["name"],
+                "url": row["url"],
+                "secret": row["secret"][:4] + "****" if row["secret"] else None,
+                "events": json.loads(row["events"]) if row["events"] else [],
+                "enabled": bool(row["enabled"]),
+                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                "last_triggered_at": row["last_triggered_at"].isoformat() if row["last_triggered_at"] else None,
+                "failure_count": row["failure_count"] or 0,
+            })
+
+    return json_response(webhooks)
+
+
+async def create_webhook(request: Request) -> JSONResponse:
+    """Create a new webhook."""
+    from .db_mysql import MySQLDB, load_db_config
+    import uuid
+
+    try:
+        body = await request.json()
+    except json.JSONDecodeError:
+        return error_response("Invalid JSON body", 400)
+
+    name = body.get("name")
+    url = body.get("url")
+    events = body.get("events", [])
+    secret = body.get("secret")
+    enabled = body.get("enabled", True)
+
+    if not name or not url:
+        return error_response("Missing required fields: name, url", 400)
+
+    webhook_id = str(uuid.uuid4())
+
+    db = MySQLDB(load_db_config())
+    with db._pool.connection() as conn:
+        cur = _cursor(conn)
+        cur.execute("""
+            INSERT INTO webhooks (webhook_id, name, url, secret, events, enabled)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (webhook_id, name, url, secret, json.dumps(events), enabled))
+        conn.commit()
+
+    return json_response({"webhook_id": webhook_id}, status=201)
+
+
+async def update_webhook(request: Request) -> JSONResponse:
+    """Update a webhook."""
+    from .db_mysql import MySQLDB, load_db_config
+
+    webhook_id = request.path_params["webhook_id"]
+
+    try:
+        body = await request.json()
+    except json.JSONDecodeError:
+        return error_response("Invalid JSON body", 400)
+
+    db = MySQLDB(load_db_config())
+    with db._pool.connection() as conn:
+        cur = _cursor(conn)
+
+        # Build update query dynamically
+        updates = []
+        params = []
+
+        for field in ["name", "url", "secret", "enabled"]:
+            if field in body:
+                updates.append(f"{field} = %s")
+                params.append(body[field])
+
+        if "events" in body:
+            updates.append("events = %s")
+            params.append(json.dumps(body["events"]))
+
+        if not updates:
+            return error_response("No fields to update", 400)
+
+        params.append(webhook_id)
+        cur.execute(f"""
+            UPDATE webhooks
+            SET {", ".join(updates)}
+            WHERE webhook_id = %s
+        """, params)
+        conn.commit()
+
+        if cur.rowcount == 0:
+            return error_response("Webhook not found", 404)
+
+    return json_response({"updated": True})
+
+
+async def delete_webhook(request: Request) -> JSONResponse:
+    """Delete a webhook."""
+    from .db_mysql import MySQLDB, load_db_config
+
+    webhook_id = request.path_params["webhook_id"]
+
+    db = MySQLDB(load_db_config())
+    with db._pool.connection() as conn:
+        cur = _cursor(conn)
+        cur.execute("DELETE FROM webhooks WHERE webhook_id = %s", (webhook_id,))
+        conn.commit()
+
+        if cur.rowcount == 0:
+            return error_response("Webhook not found", 404)
+
+    return json_response({"deleted": True})
+
+
+async def test_webhook(request: Request) -> JSONResponse:
+    """Test a webhook by sending a test event."""
+    import httpx
+
+    webhook_id = request.path_params["webhook_id"]
+
+    from .db_mysql import MySQLDB, load_db_config
+
+    db = MySQLDB(load_db_config())
+    with db._pool.connection() as conn:
+        cur = _cursor(conn)
+        cur.execute("SELECT url, secret FROM webhooks WHERE webhook_id = %s", (webhook_id,))
+        row = cur.fetchone()
+
+        if not row:
+            return error_response("Webhook not found", 404)
+
+    test_payload = {
+        "event_type": "test",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "data": {"message": "This is a test webhook event"},
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                row["url"],
+                json=test_payload,
+                timeout=10,
+            )
+            return json_response({
+                "success": resp.status_code < 400,
+                "status_code": resp.status_code,
+            })
+    except Exception as e:
+        return json_response({
+            "success": False,
+            "error": str(e),
+        })
+
+
+# =============================================================================
+# ALERTS API
+# =============================================================================
+
+async def list_alerts(request: Request) -> JSONResponse:
+    """List alerts with filtering."""
+    from .db_mysql import MySQLDB, load_db_config
+
+    severity = request.query_params.get("severity")
+    acknowledged = request.query_params.get("acknowledged")
+
+    db = MySQLDB(load_db_config())
+
+    with db._pool.connection() as conn:
+        cur = _cursor(conn)
+
+        where_clauses = []
+        params = []
+
+        if severity:
+            where_clauses.append("severity = %s")
+            params.append(severity)
+
+        if acknowledged is not None:
+            where_clauses.append("acknowledged = %s")
+            params.append(acknowledged.lower() == "true")
+
+        where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+
+        cur.execute(f"""
+            SELECT alert_id, severity, title, message, source, run_id,
+                   acknowledged, created_at
+            FROM alerts
+            WHERE {where_sql}
+            ORDER BY created_at DESC
+            LIMIT 100
+        """, params)
+
+        alerts = []
+        for row in cur.fetchall():
+            alerts.append({
+                "alert_id": row["alert_id"],
+                "severity": row["severity"],
+                "title": row["title"],
+                "message": row["message"],
+                "source": row["source"],
+                "run_id": row["run_id"],
+                "acknowledged": bool(row["acknowledged"]),
+                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+            })
+
+    return json_response(alerts)
+
+
+async def acknowledge_alert(request: Request) -> JSONResponse:
+    """Acknowledge an alert."""
+    from .db_mysql import MySQLDB, load_db_config
+
+    alert_id = request.path_params["alert_id"]
+
+    db = MySQLDB(load_db_config())
+    with db._pool.connection() as conn:
+        cur = _cursor(conn)
+        cur.execute("""
+            UPDATE alerts SET acknowledged = TRUE WHERE alert_id = %s
+        """, (alert_id,))
+        conn.commit()
+
+        if cur.rowcount == 0:
+            return error_response("Alert not found", 404)
+
+    return json_response({"acknowledged": True})
+
+
+async def delete_alert(request: Request) -> JSONResponse:
+    """Delete an alert."""
+    from .db_mysql import MySQLDB, load_db_config
+
+    alert_id = request.path_params["alert_id"]
+
+    db = MySQLDB(load_db_config())
+    with db._pool.connection() as conn:
+        cur = _cursor(conn)
+        cur.execute("DELETE FROM alerts WHERE alert_id = %s", (alert_id,))
+        conn.commit()
+
+        if cur.rowcount == 0:
+            return error_response("Alert not found", 404)
+
+    return json_response({"deleted": True})
+
+
+# =============================================================================
+# SETTINGS API
+# =============================================================================
+
+async def get_settings(request: Request) -> JSONResponse:
+    """Get dashboard settings."""
+    from .db_mysql import MySQLDB, load_db_config
+
+    db = MySQLDB(load_db_config())
+
+    with db._pool.connection() as conn:
+        cur = _cursor(conn)
+        cur.execute("SELECT setting_key, setting_value FROM settings")
+
+        settings = {}
+        for row in cur.fetchall():
+            try:
+                settings[row["setting_key"]] = json.loads(row["setting_value"])
+            except json.JSONDecodeError:
+                settings[row["setting_key"]] = row["setting_value"]
+
+    # Default settings
+    defaults = {
+        "retention_days": 30,
+        "events_retention_days": 30,
+        "alerts_retention_days": 30,
+        "stats_refresh_seconds": 30,
+        "events_refresh_seconds": 15,
+        "health_refresh_seconds": 30,
+        "discord_alerts_webhook": "",
+        "discord_summary_webhook": "",
+        "alert_failed_threshold": 5,
+        "alert_error_rate_threshold": 10,
+        "alert_queue_threshold": 100,
+        "notify_on_failure": True,
+        "notify_on_completion": False,
+        "weekly_summary_enabled": True,
+    }
+
+    return json_response({**defaults, **settings})
+
+
+async def update_settings(request: Request) -> JSONResponse:
+    """Update dashboard settings."""
+    from .db_mysql import MySQLDB, load_db_config
+
+    try:
+        body = await request.json()
+    except json.JSONDecodeError:
+        return error_response("Invalid JSON body", 400)
+
+    db = MySQLDB(load_db_config())
+
+    with db._pool.connection() as conn:
+        cur = _cursor(conn)
+
+        for key, value in body.items():
+            cur.execute("""
+                INSERT INTO settings (setting_key, setting_value)
+                VALUES (%s, %s)
+                ON DUPLICATE KEY UPDATE setting_value = %s
+            """, (key, json.dumps(value), json.dumps(value)))
+
+        conn.commit()
+
+    return json_response({"updated": True})
+
+
+# =============================================================================
+# DISCORD API
+# =============================================================================
+
+async def test_discord_notification(request: Request) -> JSONResponse:
+    """Test Discord notification webhook."""
+    import httpx
+    from .db_mysql import MySQLDB, load_db_config
+
+    db = MySQLDB(load_db_config())
+
+    with db._pool.connection() as conn:
+        cur = _cursor(conn)
+        cur.execute("SELECT setting_value FROM settings WHERE setting_key = 'discord_alerts_webhook'")
+        row = cur.fetchone()
+
+        if not row:
+            return error_response("Discord alerts webhook not configured", 400)
+
+        webhook_url = json.loads(row["setting_value"])
+
+    if not webhook_url:
+        return error_response("Discord alerts webhook not configured", 400)
+
+    payload = {
+        "embeds": [{
+            "title": "Test Notification",
+            "description": "This is a test message from AI Orchestrator Dashboard",
+            "color": 3447003,  # Blue
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "footer": {"text": "AI Orchestrator"},
+        }]
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(webhook_url, json=payload, timeout=10)
+            return json_response({
+                "success": resp.status_code < 400,
+                "status_code": resp.status_code,
+            })
+    except Exception as e:
+        return json_response({
+            "success": False,
+            "error": str(e),
+        })
+
+
+# =============================================================================
+# RUN ACTIONS
+# =============================================================================
+
+async def cancel_run_api(request: Request) -> JSONResponse:
+    """Cancel a running run."""
+    from .db_mysql import MySQLDB, load_db_config
+
+    run_id = request.path_params["run_id"]
+
+    db = MySQLDB(load_db_config())
+    with db._pool.connection() as conn:
+        cur = _cursor(conn)
+
+        # Check if run exists and is cancellable
+        cur.execute("SELECT status FROM runs WHERE run_id = %s", (run_id,))
+        row = cur.fetchone()
+
+        if not row:
+            return error_response("Run not found", 404)
+
+        if row["status"] not in ("running", "pending"):
+            return error_response(f"Run cannot be cancelled (status: {row['status']})", 400)
+
+        # Cancel the run
+        cur.execute("""
+            UPDATE runs
+            SET status = 'cancelled', completed_at = NOW()
+            WHERE run_id = %s
+        """, (run_id,))
+        conn.commit()
+
+    return json_response({"cancelled": True})
+
+
+async def retry_run_api(request: Request) -> JSONResponse:
+    """Retry a failed run."""
+    from .db_mysql import MySQLDB, load_db_config
+    import uuid
+
+    run_id = request.path_params["run_id"]
+
+    db = MySQLDB(load_db_config())
+    with db._pool.connection() as conn:
+        cur = _cursor(conn)
+
+        # Get original run
+        cur.execute("SELECT task, mode FROM runs WHERE run_id = %s", (run_id,))
+        row = cur.fetchone()
+
+        if not row:
+            return error_response("Run not found", 404)
+
+        # Create new run
+        new_run_id = str(uuid.uuid4())
+        cur.execute("""
+            INSERT INTO runs (run_id, task, mode, status, total_steps, completed_steps)
+            VALUES (%s, %s, %s, 'pending', 0, 0)
+        """, (new_run_id, row["task"], row["mode"]))
+        conn.commit()
+
+    return json_response({"new_run_id": new_run_id})
+
+
 # =============================================================================
 # REAL-TIME EVENTS (SSE)
 # =============================================================================
@@ -424,7 +1167,7 @@ async def event_stream(request: Request) -> StreamingResponse:
         while True:
             # Poll for new events
             with db._pool.connection() as conn:
-                cur = conn.cursor()
+                cur = _cursor(conn)
                 query = """
                     SELECT event_id, run_id, step_id, event_type, event_data, created_at
                     FROM events
@@ -573,14 +1316,43 @@ def create_app() -> "Starlette":
         Route("/health", health_check, methods=["GET"]),
         Route("/metrics", metrics, methods=["GET"]),
 
-        # Dashboard API
-        Route("/api/stats", get_stats, methods=["GET"]),
+        # Dashboard API - Stats
+        Route("/api/stats", get_detailed_stats, methods=["GET"]),
+        Route("/api/stats/timeseries", get_time_series, methods=["GET"]),
+        Route("/api/health", get_detailed_health, methods=["GET"]),
+
+        # Dashboard API - Runs
         Route("/api/runs", list_runs, methods=["GET"]),
         Route("/api/runs/{run_id}", get_run, methods=["GET"]),
+        Route("/api/runs/{run_id}/cancel", cancel_run_api, methods=["POST"]),
+        Route("/api/runs/{run_id}/retry", retry_run_api, methods=["POST"]),
         Route("/api/runs/{run_id}/artifacts/{name}", get_artifact, methods=["GET"]),
+
+        # Dashboard API - Events
         Route("/api/events", list_events, methods=["GET"]),
         Route("/api/events/stream", event_stream, methods=["GET"]),
+
+        # Dashboard API - Guidelines
         Route("/api/guidelines", get_guidelines, methods=["GET"]),
+
+        # Dashboard API - Webhooks
+        Route("/api/webhooks", list_webhooks, methods=["GET"]),
+        Route("/api/webhooks", create_webhook, methods=["POST"]),
+        Route("/api/webhooks/{webhook_id}", update_webhook, methods=["PUT"]),
+        Route("/api/webhooks/{webhook_id}", delete_webhook, methods=["DELETE"]),
+        Route("/api/webhooks/{webhook_id}/test", test_webhook, methods=["POST"]),
+
+        # Dashboard API - Alerts
+        Route("/api/alerts", list_alerts, methods=["GET"]),
+        Route("/api/alerts/{alert_id}/acknowledge", acknowledge_alert, methods=["POST"]),
+        Route("/api/alerts/{alert_id}", delete_alert, methods=["DELETE"]),
+
+        # Dashboard API - Settings
+        Route("/api/settings", get_settings, methods=["GET"]),
+        Route("/api/settings", update_settings, methods=["PUT"]),
+
+        # Dashboard API - Discord
+        Route("/api/discord/test", test_discord_notification, methods=["POST"]),
 
         # MCP over HTTP
         Route("/mcp/invoke", mcp_invoke, methods=["POST"]),

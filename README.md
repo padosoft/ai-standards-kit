@@ -56,6 +56,255 @@ ai-enterprise/
 
 ## 🚀 Quick Start
 
+### One-Command Start (Recommended)
+
+```bash
+# Windows
+start-servers.bat
+
+# Linux/Mac
+./start-servers.sh
+```
+
+This starts both the **Python Orchestrator** (port 8080) and the **React Dashboard** (port 3000).
+
+---
+
+## 📋 Step-by-Step Installation Guide
+
+> 🎓 **Junior-Friendly Guide** - Follow these steps exactly in order. Each step must complete before moving to the next.
+
+### Prerequisites
+
+Before starting, make sure you have installed:
+
+| Software | Minimum Version | Check Command | Download |
+|----------|-----------------|---------------|----------|
+| **Node.js** | v18+ | `node --version` | [nodejs.org](https://nodejs.org/) |
+| **npm** | v9+ | `npm --version` | Included with Node.js |
+| **Python** | v3.10+ | `python --version` | [python.org](https://python.org/) |
+| **pip** | Latest | `pip --version` | Included with Python |
+| **MySQL** | v8.0+ | `mysql --version` | [mysql.com](https://dev.mysql.com/downloads/) or Docker |
+| **Git** | Any | `git --version` | [git-scm.com](https://git-scm.com/) |
+
+### Step 1: Clone the Repository
+
+```bash
+git clone https://github.com/padosoft/ai-enterprise.git
+cd ai-enterprise
+```
+
+### Step 2: Install Node.js Dependencies
+
+```bash
+npm install
+```
+
+This installs all packages for the CLI and Dashboard. Wait for it to complete (may take 2-3 minutes).
+
+### Step 3: Start MySQL Database
+
+**Option A: Using Docker (Recommended)**
+```bash
+docker run --name ai-orch-mysql \
+  -e MYSQL_ROOT_PASSWORD=root \
+  -e MYSQL_DATABASE=ai_orch \
+  -e MYSQL_USER=ai_orch \
+  -e MYSQL_PASSWORD=super-secret \
+  -p 3306:3306 \
+  -d mysql:8.0
+
+# Wait 30 seconds for MySQL to initialize, then apply migrations:
+docker exec -i ai-orch-mysql mysql -uai_orch -psuper-secret ai_orch \
+  < packages/orchestrator/migrations/mysql_001_init.sql
+```
+
+**Option B: Using Local MySQL**
+```bash
+# Connect to MySQL as root
+mysql -u root -p
+
+# Create database and user
+CREATE DATABASE ai_orch;
+CREATE USER 'ai_orch'@'localhost' IDENTIFIED BY 'super-secret';
+GRANT ALL PRIVILEGES ON ai_orch.* TO 'ai_orch'@'localhost';
+FLUSH PRIVILEGES;
+EXIT;
+
+# Apply migrations
+mysql -uai_orch -psuper-secret ai_orch < packages/orchestrator/migrations/mysql_001_init.sql
+```
+
+### Step 4: Configure the Orchestrator
+
+```bash
+cd packages/orchestrator
+
+# Copy the example environment file
+cp .env.example .env
+```
+
+Edit `.env` with your settings:
+```env
+# Database (use your actual values)
+AI_ORCH_DB_HOST=localhost
+AI_ORCH_DB_PORT=3306
+AI_ORCH_DB_USER=ai_orch
+AI_ORCH_DB_PASS=super-secret
+AI_ORCH_DB_NAME=ai_orch
+
+# Server
+AI_ORCH_HTTP_HOST=0.0.0.0
+AI_ORCH_HTTP_PORT=8080
+
+# Paths (IMPORTANT: use absolute paths)
+AI_ORCH_REPO_ROOT=/path/to/your/projects
+AI_ORCH_ARTIFACTS_DIR=/path/to/.ai/artifacts
+
+# CORS (dashboard URLs)
+AI_ORCH_CORS_ORIGINS=http://localhost:5173,http://localhost:3000
+```
+
+### Step 5: Setup Python Virtual Environment
+
+```bash
+cd packages/orchestrator
+
+# Create virtual environment
+python -m venv .venv
+
+# Activate it
+# Windows:
+.venv\Scripts\activate
+# Linux/Mac:
+source .venv/bin/activate
+
+# Install the orchestrator package
+pip install -e .
+
+# Go back to root
+cd ../..
+```
+
+### Step 6: Start the Servers
+
+**Using the startup scripts (Recommended):**
+```bash
+# Windows
+start-servers.bat
+
+# Linux/Mac
+./start-servers.sh
+```
+
+**Or manually:**
+```bash
+# Terminal 1: Start Python Orchestrator
+cd packages/orchestrator
+.venv\Scripts\activate  # or: source .venv/bin/activate
+python run_server.py 8080
+
+# Terminal 2: Start React Dashboard
+cd packages/dashboard
+npm run dev
+```
+
+### Step 7: Verify Installation
+
+1. **Dashboard**: Open http://localhost:3000 - you should see the AI Orchestrator Dashboard
+2. **API Health**: Open http://localhost:8080/health - should return `{"status": "healthy"}`
+3. **API Stats**: Open http://localhost:8080/api/stats - should return JSON with statistics
+
+### Startup Script Options
+
+```bash
+# Start only the orchestrator
+start-servers.bat --orchestrator-only
+./start-servers.sh --orchestrator-only
+
+# Start only the dashboard
+start-servers.bat --dashboard-only
+./start-servers.sh --dashboard-only
+
+# Show help
+start-servers.bat --help
+./start-servers.sh --help
+```
+
+### Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| **Python not found** | Install Python 3.10+ and add to PATH |
+| **Node not found** | Install Node.js 18+ and restart terminal |
+| **MySQL connection refused** | Check MySQL is running: `docker ps` or `mysql -uroot -p` |
+| **Port 8080 already in use** | Kill process: `netstat -ano \| findstr :8080` then `taskkill /PID <pid> /F` |
+| **Port 3000 already in use** | Kill process: `netstat -ano \| findstr :3000` then `taskkill /PID <pid> /F` |
+| **"Module not found" in Python** | Activate venv: `.venv\Scripts\activate` and run `pip install -e .` |
+| **Dashboard shows "Offline"** | Check orchestrator is running at http://localhost:8080/health |
+| **CORS errors in browser** | Verify `AI_ORCH_CORS_ORIGINS` in `.env` includes `http://localhost:3000` |
+
+---
+
+## 🤖 Multi-Tool Integration
+
+The AI Orchestrator is **tool-agnostic** and works with any AI CLI that supports MCP (Model Context Protocol):
+
+| AI Tool | MCP Support | Integration |
+|---------|-------------|-------------|
+| **Claude Code** | ✅ Native | `claude mcp add` |
+| **Gemini CLI** | ✅ Native | Add to MCP config |
+| **Cursor IDE** | ✅ Via config | MCP server config |
+| **Continue.dev** | ✅ Via config | MCP server config |
+| **Any MCP Client** | ✅ | stdio or HTTP transport |
+
+### Register with Claude Code
+
+```bash
+claude mcp add ai-orchestrator-local '{
+  "type": "stdio",
+  "command": "bash",
+  "args": ["-lc", "cd /path/to/ai-enterprise/packages/orchestrator && source .venv/bin/activate && python -m ai_orchestrator.server"]
+}'
+```
+
+### Register with Gemini CLI
+
+Add to your `~/.gemini/settings.json`:
+```json
+{
+  "mcpServers": {
+    "ai-orchestrator": {
+      "command": "bash",
+      "args": ["-lc", "cd /path/to/ai-enterprise/packages/orchestrator && source .venv/bin/activate && python -m ai_orchestrator.server"]
+    }
+  }
+}
+```
+
+### HTTP Transport (Universal)
+
+For tools that don't support stdio, use the HTTP server:
+
+```bash
+# Start with HTTP transport
+python -m ai_orchestrator.server --transport http --port 8080
+
+# MCP endpoint available at:
+# POST http://localhost:8080/mcp/invoke
+```
+
+Any HTTP client can invoke MCP tools:
+```bash
+curl -X POST http://localhost:8080/mcp/invoke \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "list_runs", "arguments": {"limit": 10}}'
+```
+
+---
+
+## 📥 CLI Installation
+
 ### Installation
 
 ```bash

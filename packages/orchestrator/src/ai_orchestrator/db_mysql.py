@@ -69,6 +69,7 @@ class ConnectionPool:
             charset="utf8mb4",
             use_unicode=True,
             autocommit=False,
+            buffered=True,  # Buffer results to avoid "Unread result found" errors
         )
 
     @contextmanager

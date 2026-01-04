@@ -26,7 +26,7 @@ classifiers = [
 dependencies = [
     "fastmcp>=0.4.0",
     "pydantic>=2.7.0",
-    "mysqlclient>=2.2.0",
+    "mysql-connector-python>=8.0.0",
 ]
 
 [project.optional-dependencies]

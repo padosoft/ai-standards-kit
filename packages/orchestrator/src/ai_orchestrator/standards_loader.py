@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .parlant_adapter import Guideline, GuidelineCategory
+from .parlant_adapter import Guideline, GuidelineCategory, GuidelineSource
 
 
 def find_standards_path() -> Optional[Path]:
@@ -96,17 +96,19 @@ def _map_gate_to_condition(gate_category: str) -> Optional[Dict[str, Any]]:
     return stack_conditions.get(gate_category)
 
 
-def quality_gates_to_guidelines(settings: Dict[str, Any]) -> List[Guideline]:
+def quality_gates_to_guidelines(settings: Dict[str, Any], settings_path: Optional[Path] = None) -> List[Guideline]:
     """Convert quality_gates from settings.json to Parlant Guidelines.
 
     Args:
         settings: The loaded settings.json content
+        settings_path: Optional path to settings.json for source tracking
 
     Returns:
         List of Guidelines ready for use by ParlantEngine
     """
     guidelines: List[Guideline] = []
     quality_gates = settings.get("quality_gates", {})
+    source_path = str(settings_path) if settings_path else None
 
     # Priority assignment (lower = higher priority)
     # Security gates: 1-20
@@ -155,6 +157,8 @@ def quality_gates_to_guidelines(settings: Dict[str, Any]) -> List[Guideline]:
                 priority=base_priority + gate_idx,
                 condition=condition,
                 is_active=True,
+                source=GuidelineSource.STANDARDS,
+                source_path=source_path,
             )
             guidelines.append(guideline)
 
@@ -214,7 +218,10 @@ class StandardsIntegration:
     def guidelines(self) -> List[Guideline]:
         """Get quality gates converted to guidelines."""
         if self._guidelines is None:
-            self._guidelines = quality_gates_to_guidelines(self.settings)
+            settings_path = None
+            if self.standards_path:
+                settings_path = self.standards_path / "config" / "settings.json"
+            self._guidelines = quality_gates_to_guidelines(self.settings, settings_path)
         return self._guidelines
 
     @property

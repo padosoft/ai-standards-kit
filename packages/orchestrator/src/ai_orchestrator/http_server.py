@@ -420,6 +420,8 @@ async def get_guidelines(request: Request) -> JSONResponse:
                 "name": g.name,
                 "description": g.description,
                 "priority": g.priority,
+                "source": g.source.value,
+                "source_path": g.source_path,
             }
             for g in guidelines
         ],
@@ -637,6 +639,11 @@ async def get_detailed_health(request: Request) -> JSONResponse:
             # Get connection count
             cur.execute("SHOW STATUS LIKE 'Threads_connected'")
             row = cur.fetchone()
+            # Consume any remaining results from SHOW STATUS
+            try:
+                cur._cursor.fetchall()
+            except Exception:
+                pass
             connections = int(row["Value"]) if row else 0
 
             # Get db size

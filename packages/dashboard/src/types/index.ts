@@ -84,6 +84,8 @@ export interface Event {
   created_at: string
 }
 
+export type GuidelineSource = 'db' | 'builtin' | 'standards'
+
 export interface Guideline {
   id: string
   guideline_id?: string  // alias for id
@@ -95,6 +97,8 @@ export interface Guideline {
   enabled?: boolean
   tags?: string[]
   condition?: string | Record<string, unknown>
+  source?: GuidelineSource
+  source_path?: string | null
 }
 
 export interface Webhook {

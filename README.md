@@ -56,17 +56,25 @@ ai-enterprise/
 
 ## 🚀 Quick Start
 
-### One-Command Start (Recommended)
+### One-Command Start/Stop (Recommended)
 
 ```bash
+# Start servers
 # Windows
 start-servers.bat
 
 # Linux/Mac
 ./start-servers.sh
+
+# Stop servers
+# Windows
+stop-servers.bat
+
+# Linux/Mac
+./stop-servers.sh
 ```
 
-This starts both the **Python Orchestrator** (port 8080) and the **React Dashboard** (port 3000).
+This starts/stops both the **Python Orchestrator** (port 8080) and the **React Dashboard** (port 3000).
 
 ---
 
@@ -215,7 +223,7 @@ npm run dev
 2. **API Health**: Open http://localhost:8080/health - should return `{"status": "healthy"}`
 3. **API Stats**: Open http://localhost:8080/api/stats - should return JSON with statistics
 
-### Startup Script Options
+### Server Script Options
 
 ```bash
 # Start only the orchestrator
@@ -226,9 +234,19 @@ start-servers.bat --orchestrator-only
 start-servers.bat --dashboard-only
 ./start-servers.sh --dashboard-only
 
+# Stop only the orchestrator
+stop-servers.bat --orchestrator-only
+./stop-servers.sh --orchestrator-only
+
+# Stop only the dashboard
+stop-servers.bat --dashboard-only
+./stop-servers.sh --dashboard-only
+
 # Show help
 start-servers.bat --help
 ./start-servers.sh --help
+stop-servers.bat --help
+./stop-servers.sh --help
 ```
 
 ### Troubleshooting
@@ -576,6 +594,89 @@ npm run dev
 - Critical alerts to designated channel
 - Weekly summary reports (separate channel)
 - Configurable notification triggers
+
+### Guidelines: Parlant-Style Behavioral Rules
+
+Guidelines are **structured behavioral rules** that govern AI agent behavior. Unlike free-form prompt instructions, Guidelines are:
+
+- **Prioritized** - Lower numbers = higher priority (1-100 scale)
+- **Categorized** - `behavior`, `security`, `quality`, `custom`
+- **Conditional** - Can apply only to specific stacks or contexts
+- **Externally Enforced** - Validated by the orchestrator, not just suggested
+
+#### Guideline Sources
+
+Guidelines come from three sources, each with different persistence:
+
+| Source | Icon | Persistence | Edit Location |
+|--------|------|-------------|---------------|
+| **Database** | `HardDrive` | Persistent | Dashboard or API |
+| **Built-in** | `Package` | Read-only | Code changes only |
+| **Standards JSON** | `FileJson` | Session-only* | `packages/standards/config/settings.json` |
+
+> **\* Important**: Guidelines loaded from `settings.json` are resynced every time the server restarts. Any modifications made via the dashboard will be lost on restart. To permanently change these guidelines, edit the source JSON file.
+
+#### Built-in Guidelines (Always Active)
+
+| ID | Category | Priority | Name | Description |
+|----|----------|----------|------|-------------|
+| g-security-001 | security | 5 | command_safety | Never execute destructive commands (rm -rf, curl\|bash, etc.) |
+| g-security-002 | security | 6 | secret_protection | Never include secrets, API keys, or credentials in output |
+| g-behavior-001 | behavior | 10 | contract_compliance | Always follow step contracts strictly |
+| g-behavior-002 | behavior | 20 | minimal_context | Keep each step focused on its specific goal |
+| g-behavior-003 | behavior | 30 | deterministic_changes | Prefer minimal, deterministic changes |
+| g-quality-001 | quality | 40 | test_verification | Run tests before marking a coding step complete |
+
+#### Settings.json Quality Gates as Guidelines
+
+Quality gates defined in `packages/standards/config/settings.json` are automatically converted to Guidelines:
+
+```json
+{
+  "quality_gates": {
+    "database": {
+      "no_offset_over_1000": {
+        "enabled": true,
+        "message": "BLOCKED: Use keyset pagination instead of OFFSET > 1000"
+      }
+    },
+    "security": {
+      "no_pii_in_logs": {
+        "enabled": true,
+        "message": "Never log PII (emails, IPs, passwords)"
+      }
+    }
+  }
+}
+```
+
+These become Guidelines with:
+- **ID**: `qg-{category}-{gate_name}` (e.g., `qg-database-no_offset_over_1000`)
+- **Source**: `standards`
+- **Source Path**: Full path to `settings.json`
+
+#### Managing Guidelines via API
+
+```bash
+# List all guidelines
+curl http://localhost:8080/api/guidelines
+
+# Filter by category
+curl http://localhost:8080/api/guidelines?category=security
+
+# Filter by stack
+curl http://localhost:8080/api/guidelines?stack=php-laravel
+```
+
+#### Managing Guidelines via Dashboard
+
+1. Navigate to **Guidelines** in the sidebar
+2. View guidelines grouped by source (Database, Built-in, Standards JSON)
+3. Add new guidelines using the **Add Guideline** button (creates in Database)
+4. Toggle guidelines on/off (Database only)
+5. Edit/delete guidelines (Database only)
+
+> **Note**: Built-in and Standards guidelines show as "read-only" in the dashboard. To modify them permanently, edit the source code or `settings.json` file.
 
 ### Python API
 

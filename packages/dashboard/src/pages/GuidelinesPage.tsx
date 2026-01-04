@@ -12,6 +12,11 @@ import {
   Tag,
   ToggleLeft,
   ToggleRight,
+  FileJson,
+  HardDrive,
+  Package,
+  AlertCircle,
+  Info,
 } from 'lucide-react'
 import { api } from '@/api/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -19,7 +24,28 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/utils/cn'
-import type { Guideline } from '@/types'
+import type { Guideline, GuidelineSource } from '@/types'
+
+const SOURCE_CONFIG: Record<GuidelineSource, { label: string; icon: React.ComponentType<{ className?: string }>; color: string; description: string }> = {
+  db: {
+    label: 'Database',
+    icon: HardDrive,
+    color: 'text-blue-500',
+    description: 'User-created, changes persist across restarts',
+  },
+  builtin: {
+    label: 'Built-in',
+    icon: Package,
+    color: 'text-purple-500',
+    description: 'Default system rules, read-only',
+  },
+  standards: {
+    label: 'Standards JSON',
+    icon: FileJson,
+    color: 'text-orange-500',
+    description: 'Loaded from settings.json, resynced on server restart',
+  },
+}
 
 export function GuidelinesPage() {
   const queryClient = useQueryClient()
@@ -58,6 +84,13 @@ export function GuidelinesPage() {
 
   const activeCount = guidelines?.filter((g) => g.enabled !== false).length ?? 0
 
+  // Count by source
+  const sourceCounts = guidelines?.reduce((acc, g) => {
+    const source = g.source || 'builtin'
+    acc[source] = (acc[source] || 0) + 1
+    return acc
+  }, {} as Record<string, number>) ?? {}
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -73,6 +106,55 @@ export function GuidelinesPage() {
           </Button>
         </div>
       </div>
+
+      {/* Source Legend */}
+      <Card className="bg-muted/30">
+        <CardContent className="pt-4 pb-3">
+          <div className="flex items-start gap-2 mb-3">
+            <Info className="h-4 w-4 text-muted-foreground mt-0.5" />
+            <p className="text-sm text-muted-foreground">
+              Guidelines are loaded from multiple sources. Only <strong>Database</strong> guidelines can be modified and persist changes.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-4">
+            {(Object.entries(SOURCE_CONFIG) as [GuidelineSource, typeof SOURCE_CONFIG[GuidelineSource]][]).map(([source, config]) => {
+              const Icon = config.icon
+              const count = sourceCounts[source] || 0
+              return (
+                <div key={source} className="flex items-center gap-2">
+                  <Icon className={cn('h-4 w-4', config.color)} />
+                  <span className="text-sm font-medium">{config.label}</span>
+                  <Badge variant="outline" className="text-xs">{count}</Badge>
+                  <span className="text-xs text-muted-foreground hidden sm:inline">- {config.description}</span>
+                </div>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Warning for standards guidelines */}
+      {sourceCounts.standards > 0 && (
+        <Card className="border-orange-500/50 bg-orange-50 dark:bg-orange-950/20">
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-5 w-5 text-orange-500 mt-0.5 flex-shrink-0" />
+              <div className="text-sm">
+                <p className="font-medium text-orange-700 dark:text-orange-400">
+                  {sourceCounts.standards} guidelines loaded from settings.json
+                </p>
+                <p className="text-orange-600 dark:text-orange-500 mt-1">
+                  Modifications to these guidelines are temporary and will be reset when the server restarts.
+                  To permanently modify them, edit the source file:
+                </p>
+                <code className="text-xs bg-orange-100 dark:bg-orange-900/50 px-2 py-1 rounded mt-2 inline-block">
+                  packages/standards/config/settings.json
+                </code>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Search */}
       <Card>
@@ -150,7 +232,19 @@ export function GuidelinesPage() {
                     </button>
 
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm">{guideline.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-sm">{guideline.name}</p>
+                        {(() => {
+                          const source = (guideline.source || 'builtin') as GuidelineSource
+                          const config = SOURCE_CONFIG[source]
+                          const SourceIcon = config.icon
+                          return (
+                            <span title={`${config.label}: ${config.description}`} className="flex items-center">
+                              <SourceIcon className={cn('h-4 w-4', config.color)} />
+                            </span>
+                          )
+                        })()}
+                      </div>
                       <p className="text-sm text-muted-foreground whitespace-pre-wrap mt-1">
                         {guideline.content || guideline.description}
                       </p>
@@ -167,25 +261,37 @@ export function GuidelinesPage() {
                       </div>
                       <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                         <span>Priority: {guideline.priority}</span>
+                        {guideline.source_path && (
+                          <span className="text-muted-foreground/70" title={guideline.source_path}>
+                            Source: {guideline.source_path.split('/').pop() || guideline.source_path.split('\\').pop()}
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingId(guideline.id)}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => deleteMutation.mutate(guideline.id)}
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {/* Only allow edit/delete for db guidelines */}
+                      {guideline.source === 'db' || !guideline.source ? (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingId(guideline.id)}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteMutation.mutate(guideline.id)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic px-2">read-only</span>
+                      )}
                     </div>
                   </div>
                 </div>

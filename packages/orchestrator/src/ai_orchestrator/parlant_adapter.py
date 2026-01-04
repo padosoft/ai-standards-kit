@@ -28,6 +28,13 @@ class GuidelineCategory(str, Enum):
     CUSTOM = "custom"
 
 
+class GuidelineSource(str, Enum):
+    """Source of a guideline."""
+    DB = "db"           # User-created in database
+    BUILTIN = "builtin" # Built-in default guidelines
+    STANDARDS = "standards"  # Loaded from settings.json
+
+
 @dataclass
 class Guideline:
     """A structured behavioral guideline (Parlant core concept).
@@ -45,6 +52,8 @@ class Guideline:
     priority: int = 100
     condition: Optional[Dict[str, Any]] = None
     is_active: bool = True
+    source: GuidelineSource = GuidelineSource.BUILTIN
+    source_path: Optional[str] = None
 
     def applies_to(self, context: Dict[str, Any]) -> bool:
         """Check if this guideline applies given the context."""
@@ -168,6 +177,7 @@ class ParlantEngine(GovernanceEngine):
             name="contract_compliance",
             description="Always follow step contracts strictly. If validation fails, analyze the error and retry with exact compliance. Do not bloat payload with unnecessary context.",
             priority=10,
+            source=GuidelineSource.BUILTIN,
         ),
         Guideline(
             id="g-behavior-002",
@@ -175,6 +185,7 @@ class ParlantEngine(GovernanceEngine):
             name="minimal_context",
             description="Keep each step focused on its specific goal. Minimize context passed between steps. Each step should be self-contained.",
             priority=20,
+            source=GuidelineSource.BUILTIN,
         ),
         Guideline(
             id="g-behavior-003",
@@ -182,6 +193,7 @@ class ParlantEngine(GovernanceEngine):
             name="deterministic_changes",
             description="Prefer minimal, deterministic changes. Avoid large refactors unless explicitly requested. Small focused diffs are better than comprehensive rewrites.",
             priority=30,
+            source=GuidelineSource.BUILTIN,
         ),
         Guideline(
             id="g-quality-001",
@@ -190,6 +202,7 @@ class ParlantEngine(GovernanceEngine):
             description="If tests are available, always run them before marking a coding step complete. A passing test suite is required for reviewer approval.",
             priority=40,
             condition={"requires_tests": True},
+            source=GuidelineSource.BUILTIN,
         ),
         Guideline(
             id="g-security-001",
@@ -197,6 +210,7 @@ class ParlantEngine(GovernanceEngine):
             name="command_safety",
             description="Never execute destructive commands (rm -rf, curl|bash, etc.). Always validate artifact paths stay within repo boundaries.",
             priority=5,
+            source=GuidelineSource.BUILTIN,
         ),
         Guideline(
             id="g-security-002",
@@ -204,6 +218,7 @@ class ParlantEngine(GovernanceEngine):
             name="secret_protection",
             description="Never include secrets, API keys, or credentials in artifacts or output. Sanitize all logs before storage.",
             priority=6,
+            source=GuidelineSource.BUILTIN,
         ),
     ]
 

@@ -1297,6 +1297,91 @@ async def mcp_invoke(request: Request) -> JSONResponse:
 
 
 # =============================================================================
+# GUIDELINES SYNC
+# =============================================================================
+
+def sync_guidelines_to_db() -> int:
+    """Sync guidelines from ParlantEngine (standards + builtin) to MySQL database.
+
+    This function is called on server startup to ensure all guidelines from
+    settings.json and builtin are present in the database with their source field.
+
+    Returns:
+        Number of guidelines synced (inserted or updated)
+    """
+    from .parlant_adapter import ParlantEngine, GuidelineSource
+    from .db_mysql import get_pool, load_db_config
+    import json as json_module
+
+    try:
+        pool = get_pool(load_db_config())
+    except Exception as e:
+        logger.warning(f"No MySQL connection, skipping guidelines sync: {e}")
+        return 0
+
+    # Get all guidelines from ParlantEngine (builtin + standards)
+    engine = ParlantEngine()
+    guidelines = engine._guidelines
+
+    synced_count = 0
+
+    with pool.connection() as conn:
+        cur = _cursor(conn)
+
+        for g in guidelines:
+            # Skip DB-sourced guidelines (they're already in DB)
+            if g.source == GuidelineSource.DB:
+                continue
+
+            # Upsert guideline
+            condition_json = json_module.dumps(g.condition) if g.condition else None
+
+            try:
+                cur.execute("""
+                    INSERT INTO guidelines (guideline_id, category, priority, name, description, condition_json, is_active, source, source_path)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                        category = VALUES(category),
+                        priority = VALUES(priority),
+                        name = VALUES(name),
+                        description = VALUES(description),
+                        condition_json = VALUES(condition_json),
+                        is_active = VALUES(is_active),
+                        source = VALUES(source),
+                        source_path = VALUES(source_path),
+                        updated_at = CURRENT_TIMESTAMP(6)
+                """, (
+                    g.id,
+                    g.category.value,
+                    g.priority,
+                    g.name,
+                    g.description,
+                    condition_json,
+                    g.is_active,
+                    g.source.value,
+                    g.source_path,
+                ))
+                synced_count += 1
+            except Exception as e:
+                logger.warning(f"Failed to sync guideline {g.id}: {e}")
+
+        conn.commit()
+        logger.info(f"Synced {synced_count} guidelines to database (builtin + standards)")
+
+    return synced_count
+
+
+async def on_startup():
+    """Startup handler - sync guidelines from JSON to database."""
+    logger.info("Server starting up - syncing guidelines...")
+    try:
+        count = sync_guidelines_to_db()
+        logger.info(f"Startup complete: {count} guidelines synced")
+    except Exception as e:
+        logger.error(f"Startup guidelines sync failed: {e}")
+
+
+# =============================================================================
 # APPLICATION FACTORY
 # =============================================================================
 
@@ -1369,6 +1454,7 @@ def create_app() -> "Starlette":
         debug=os.environ.get("AI_ORCH_DEBUG", "false").lower() == "true",
         routes=routes,
         middleware=middleware,
+        on_startup=[on_startup],
     )
 
     return app

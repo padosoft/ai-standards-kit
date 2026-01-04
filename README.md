@@ -20,6 +20,14 @@
 
 ---
 
+## Dashboard Preview
+
+<p align="center">
+  <img src="docs/images/dashboard-overview.png" alt="AI Enterprise Dashboard" width="100%">
+</p>
+
+---
+
 ## 📁 Monorepo Structure
 
 ```

@@ -47,15 +47,29 @@ const SOURCE_CONFIG: Record<GuidelineSource, { label: string; icon: React.Compon
   },
 }
 
+const CATEGORY_COLORS: Record<string, string> = {
+  behavior: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+  security: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+  quality: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+  performance: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+  testing: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
+  logging: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300',
+  database: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300',
+  general: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300',
+}
+
 export function GuidelinesPage() {
   const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [sourceFilter, setSourceFilter] = useState<GuidelineSource | 'all'>('all')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
+  const [tagFilter, setTagFilter] = useState<string>('all')
 
   const { data: guidelines, isLoading } = useQuery({
     queryKey: ['guidelines'],
-    queryFn: api.getGuidelines,
+    queryFn: () => api.getGuidelines(),
   })
 
   const deleteMutation = useMutation({
@@ -74,6 +88,20 @@ export function GuidelinesPage() {
   })
 
   const filteredGuidelines = guidelines?.filter((g) => {
+    // Source filter
+    if (sourceFilter !== 'all') {
+      const gSource = g.source || 'builtin'
+      if (gSource !== sourceFilter) return false
+    }
+    // Category filter
+    if (categoryFilter !== 'all') {
+      if (g.category !== categoryFilter) return false
+    }
+    // Tag filter
+    if (tagFilter !== 'all') {
+      if (!g.tags?.includes(tagFilter)) return false
+    }
+    // Text search
     const text = g.content || g.description || ''
     return search
       ? text.toLowerCase().includes(search.toLowerCase()) ||
@@ -90,6 +118,26 @@ export function GuidelinesPage() {
     acc[source] = (acc[source] || 0) + 1
     return acc
   }, {} as Record<string, number>) ?? {}
+
+  // Count by category
+  const categoryCounts = guidelines?.reduce((acc, g) => {
+    const cat = g.category || 'general'
+    acc[cat] = (acc[cat] || 0) + 1
+    return acc
+  }, {} as Record<string, number>) ?? {}
+
+  // Get unique categories from data
+  const uniqueCategories = [...new Set(guidelines?.map((g) => g.category || 'general') ?? [])]
+
+  // Count by tag and get unique tags
+  const tagCounts = guidelines?.reduce((acc, g) => {
+    g.tags?.forEach((tag) => {
+      acc[tag] = (acc[tag] || 0) + 1
+    })
+    return acc
+  }, {} as Record<string, number>) ?? {}
+
+  const uniqueTags = [...new Set(guidelines?.flatMap((g) => g.tags || []) ?? [])]
 
   return (
     <div className="space-y-6">
@@ -156,9 +204,9 @@ export function GuidelinesPage() {
         </Card>
       )}
 
-      {/* Search */}
+      {/* Search and Filter */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 space-y-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -168,12 +216,92 @@ export function GuidelinesPage() {
               className="pl-9"
             />
           </div>
+          {/* Source filter buttons */}
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground font-medium">Source</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={sourceFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setSourceFilter('all')}
+              >
+                All ({guidelines?.length ?? 0})
+              </Button>
+              {(Object.entries(SOURCE_CONFIG) as [GuidelineSource, typeof SOURCE_CONFIG[GuidelineSource]][]).map(([source, config]) => {
+                const Icon = config.icon
+                const count = sourceCounts[source] || 0
+                return (
+                  <Button
+                    key={source}
+                    variant={sourceFilter === source ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSourceFilter(source)}
+                    className="gap-2"
+                  >
+                    <Icon className={cn('h-4 w-4', sourceFilter !== source && config.color)} />
+                    {config.label} ({count})
+                  </Button>
+                )
+              })}
+            </div>
+          </div>
+          {/* Category filter buttons */}
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground font-medium">Category</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={categoryFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setCategoryFilter('all')}
+              >
+                All
+              </Button>
+              {uniqueCategories.sort().map((cat) => (
+                <Button
+                  key={cat}
+                  variant={categoryFilter === cat ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setCategoryFilter(cat)}
+                >
+                  {cat.charAt(0).toUpperCase() + cat.slice(1)} ({categoryCounts[cat] || 0})
+                </Button>
+              ))}
+            </div>
+          </div>
+          {/* Tag filter buttons */}
+          {uniqueTags.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground font-medium">Tags</p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant={tagFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setTagFilter('all')}
+                >
+                  All
+                </Button>
+                {uniqueTags.sort().map((tag) => (
+                  <Button
+                    key={tag}
+                    variant={tagFilter === tag ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setTagFilter(tag)}
+                    className="gap-1"
+                  >
+                    <Tag className="h-3 w-3" />
+                    {tag} ({tagCounts[tag] || 0})
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       {/* Add/Edit form */}
       {(showForm || editingId) && (
         <GuidelineForm
+          key={editingId || 'new'}
           guideline={editingId ? guidelines?.find((g) => g.id === editingId) : undefined}
           onClose={() => {
             setShowForm(false)
@@ -249,7 +377,12 @@ export function GuidelinesPage() {
                         {guideline.content || guideline.description}
                       </p>
                       <div className="flex flex-wrap gap-1 mt-2">
-                        <Badge variant="outline" className="text-xs">
+                        <Badge
+                          className={cn(
+                            'text-xs border-0',
+                            CATEGORY_COLORS[guideline.category] || CATEGORY_COLORS.general
+                          )}
+                        >
                           {guideline.category}
                         </Badge>
                         {guideline.tags?.map((tag) => (
@@ -309,8 +442,21 @@ interface GuidelineFormProps {
   onClose: () => void
 }
 
+const CATEGORY_OPTIONS = [
+  { value: 'behavior', label: 'Behavior' },
+  { value: 'security', label: 'Security' },
+  { value: 'quality', label: 'Quality' },
+  { value: 'performance', label: 'Performance' },
+  { value: 'testing', label: 'Testing' },
+  { value: 'logging', label: 'Logging' },
+  { value: 'database', label: 'Database' },
+  { value: 'general', label: 'General' },
+]
+
 function GuidelineForm({ guideline, onClose }: GuidelineFormProps) {
   const queryClient = useQueryClient()
+  const [name, setName] = useState(guideline?.name ?? '')
+  const [category, setCategory] = useState(guideline?.category ?? 'general')
   const [content, setContent] = useState(guideline?.content ?? '')
   const [priority, setPriority] = useState(guideline?.priority ?? 1)
   const [tags, setTags] = useState(guideline?.tags?.join(', ') ?? '')
@@ -337,6 +483,8 @@ function GuidelineForm({ guideline, onClose }: GuidelineFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const data = {
+      name,
+      category,
       content,
       priority,
       tags: tags
@@ -361,6 +509,33 @@ function GuidelineForm({ guideline, onClose }: GuidelineFormProps) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="text-sm font-medium">Name</label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Guideline name"
+                className="mt-1"
+                required
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Category</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full mt-1 p-2 rounded-md border bg-background"
+              >
+                {CATEGORY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div>
             <label className="text-sm font-medium">Content</label>
             <textarea

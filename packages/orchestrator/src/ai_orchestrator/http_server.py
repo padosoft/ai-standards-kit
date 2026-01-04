@@ -396,37 +396,249 @@ async def get_artifact(request: Request) -> Response:
 
 
 async def get_guidelines(request: Request) -> JSONResponse:
-    """Get active guidelines."""
-    from .parlant_adapter import ParlantEngine
+    """Get active guidelines from database."""
+    from .db_mysql import get_pool, load_db_config
 
     category = request.query_params.get("category")
-    stack = request.query_params.get("stack")
 
-    engine = ParlantEngine()
-    context = {}
-    if stack:
-        context["stack"] = stack
+    try:
+        pool = get_pool(load_db_config())
+    except Exception as e:
+        logger.warning(f"No MySQL connection for guidelines: {e}")
+        return json_response({"guidelines": [], "count": 0})
 
-    guidelines = engine.get_applicable_guidelines(context)
+    with pool.connection() as conn:
+        cur = _cursor(conn)
 
-    if category:
-        guidelines = [g for g in guidelines if g.category.value == category]
+        if category:
+            cur.execute("""
+                SELECT guideline_id, category, name, description, priority,
+                       is_active, source, source_path, condition_json, tags_json
+                FROM guidelines
+                WHERE category = %s
+                ORDER BY priority ASC
+            """, (category,))
+        else:
+            cur.execute("""
+                SELECT guideline_id, category, name, description, priority,
+                       is_active, source, source_path, condition_json, tags_json
+                FROM guidelines
+                ORDER BY priority ASC
+            """)
+
+        rows = cur.fetchall()
+
+    import json as json_module
+
+    guidelines = []
+    for row in rows:
+        # Parse condition_json if present - extract raw value, not JSON string
+        condition = None
+        if row.get("condition_json"):
+            try:
+                cond_val = row["condition_json"]
+                # If it's already a dict/value from MySQL JSON column, use directly
+                if isinstance(cond_val, (dict, list)):
+                    condition = json_module.dumps(cond_val)
+                elif isinstance(cond_val, str):
+                    # Try to parse and return as simple string
+                    parsed = json_module.loads(cond_val)
+                    condition = str(parsed) if not isinstance(parsed, (dict, list)) else cond_val
+                else:
+                    condition = str(cond_val)
+            except Exception:
+                condition = str(row["condition_json"]) if row["condition_json"] else None
+
+        # Parse tags_json if present
+        tags = []
+        if row.get("tags_json"):
+            try:
+                tags_val = row["tags_json"]
+                if isinstance(tags_val, list):
+                    tags = tags_val
+                elif isinstance(tags_val, str):
+                    tags = json_module.loads(tags_val)
+                else:
+                    tags = []
+            except Exception:
+                tags = []
+
+        guidelines.append({
+            "id": row["guideline_id"],
+            "category": row["category"],
+            "name": row["name"],
+            "description": row["description"],
+            "content": row["description"],  # content is same as description
+            "priority": row["priority"],
+            "enabled": bool(row["is_active"]) if row["is_active"] is not None else True,
+            "source": row["source"] or "builtin",
+            "source_path": row["source_path"],
+            "condition": condition,
+            "tags": tags,
+        })
 
     return json_response({
-        "guidelines": [
-            {
-                "id": g.id,
-                "category": g.category.value,
-                "name": g.name,
-                "description": g.description,
-                "priority": g.priority,
-                "source": g.source.value,
-                "source_path": g.source_path,
-            }
-            for g in guidelines
-        ],
+        "guidelines": guidelines,
         "count": len(guidelines),
     })
+
+
+async def create_guideline(request: Request) -> JSONResponse:
+    """Create a new guideline (db source only)."""
+    from .db_mysql import get_pool, load_db_config
+    import uuid
+    import json as json_module
+
+    try:
+        body = await request.json()
+    except Exception:
+        return error_response("Invalid JSON body", 400)
+
+    # Generate ID if not provided
+    guideline_id = body.get("id") or f"db-{uuid.uuid4().hex[:12]}"
+    name = body.get("name") or body.get("content", "")[:50]
+    description = body.get("content") or body.get("description", "")
+    category = body.get("category", "custom")
+    priority = body.get("priority", 100)
+    is_active = body.get("enabled", True)
+    condition_json = json_module.dumps(body.get("condition")) if body.get("condition") else None
+    tags_json = json_module.dumps(body.get("tags")) if body.get("tags") else None
+
+    try:
+        pool = get_pool(load_db_config())
+    except Exception as e:
+        return error_response(f"Database connection failed: {e}", 500)
+
+    with pool.connection() as conn:
+        cur = _cursor(conn)
+        cur.execute("""
+            INSERT INTO guidelines (guideline_id, category, name, description, priority, is_active, source, source_path, condition_json, tags_json)
+            VALUES (%s, %s, %s, %s, %s, %s, 'db', NULL, %s, %s)
+        """, (guideline_id, category, name, description, priority, is_active, condition_json, tags_json))
+        conn.commit()
+
+    return json_response({
+        "id": guideline_id,
+        "category": category,
+        "name": name,
+        "description": description,
+        "priority": priority,
+        "enabled": is_active,
+        "source": "db",
+        "source_path": None,
+    })
+
+
+async def update_guideline(request: Request) -> JSONResponse:
+    """Update an existing guideline."""
+    from .db_mysql import get_pool, load_db_config
+    import json as json_module
+
+    guideline_id = request.path_params.get("guideline_id")
+
+    try:
+        body = await request.json()
+    except Exception:
+        return error_response("Invalid JSON body", 400)
+
+    try:
+        pool = get_pool(load_db_config())
+    except Exception as e:
+        return error_response(f"Database connection failed: {e}", 500)
+
+    # Build update query dynamically
+    updates = []
+    params = []
+
+    if "name" in body:
+        updates.append("name = %s")
+        params.append(body["name"])
+    if "description" in body or "content" in body:
+        updates.append("description = %s")
+        params.append(body.get("content") or body.get("description"))
+    if "category" in body:
+        updates.append("category = %s")
+        params.append(body["category"])
+    if "priority" in body:
+        updates.append("priority = %s")
+        params.append(body["priority"])
+    if "enabled" in body:
+        updates.append("is_active = %s")
+        params.append(body["enabled"])
+    if "condition" in body:
+        updates.append("condition_json = %s")
+        params.append(json_module.dumps(body["condition"]) if body["condition"] else None)
+    if "tags" in body:
+        updates.append("tags_json = %s")
+        params.append(json_module.dumps(body["tags"]) if body["tags"] else None)
+
+    if not updates:
+        return error_response("No fields to update", 400)
+
+    updates.append("updated_at = CURRENT_TIMESTAMP(6)")
+    params.append(guideline_id)
+
+    with pool.connection() as conn:
+        cur = _cursor(conn)
+        cur.execute(f"""
+            UPDATE guidelines SET {", ".join(updates)}
+            WHERE guideline_id = %s
+        """, params)
+        conn.commit()
+
+        if cur.rowcount == 0:
+            return error_response("Guideline not found", 404)
+
+        # Fetch updated guideline
+        cur.execute("""
+            SELECT guideline_id, category, name, description, priority, is_active, source, source_path
+            FROM guidelines WHERE guideline_id = %s
+        """, (guideline_id,))
+        row = cur.fetchone()
+
+    if not row:
+        return error_response("Guideline not found", 404)
+
+    return json_response({
+        "id": row["guideline_id"],
+        "category": row["category"],
+        "name": row["name"],
+        "description": row["description"],
+        "priority": row["priority"],
+        "enabled": bool(row["is_active"]),
+        "source": row["source"] or "builtin",
+        "source_path": row["source_path"],
+    })
+
+
+async def delete_guideline(request: Request) -> JSONResponse:
+    """Delete a guideline (db source only)."""
+    from .db_mysql import get_pool, load_db_config
+
+    guideline_id = request.path_params.get("guideline_id")
+
+    try:
+        pool = get_pool(load_db_config())
+    except Exception as e:
+        return error_response(f"Database connection failed: {e}", 500)
+
+    with pool.connection() as conn:
+        cur = _cursor(conn)
+
+        # Check if it's a db guideline (only those can be deleted)
+        cur.execute("SELECT source FROM guidelines WHERE guideline_id = %s", (guideline_id,))
+        row = cur.fetchone()
+
+        if not row:
+            return error_response("Guideline not found", 404)
+
+        if row["source"] != "db":
+            return error_response("Only database guidelines can be deleted", 403)
+
+        cur.execute("DELETE FROM guidelines WHERE guideline_id = %s", (guideline_id,))
+        conn.commit()
+
+    return json_response({"deleted": True, "id": guideline_id})
 
 
 async def get_time_series(request: Request) -> JSONResponse:
@@ -1426,6 +1638,9 @@ def create_app() -> "Starlette":
 
         # Dashboard API - Guidelines
         Route("/api/guidelines", get_guidelines, methods=["GET"]),
+        Route("/api/guidelines", create_guideline, methods=["POST"]),
+        Route("/api/guidelines/{guideline_id:path}", update_guideline, methods=["PUT"]),
+        Route("/api/guidelines/{guideline_id:path}", delete_guideline, methods=["DELETE"]),
 
         # Dashboard API - Webhooks
         Route("/api/webhooks", list_webhooks, methods=["GET"]),

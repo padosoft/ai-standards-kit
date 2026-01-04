@@ -8,8 +8,8 @@ from queue import Queue, Empty
 from threading import Lock
 from typing import Any, Dict, List, Optional, Iterator
 
-import MySQLdb
-import MySQLdb.cursors
+import mysql.connector
+from mysql.connector import Error as MySQLError
 
 from .config import DBConfig
 
@@ -17,6 +17,36 @@ from .config import DBConfig
 def now_utc() -> datetime:
     """Return current UTC datetime without timezone info (for MySQL)."""
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+class DictCursor:
+    """Wrapper to provide dict-like cursor results."""
+
+    def __init__(self, cursor):
+        self._cursor = cursor
+        self._columns = None
+
+    def execute(self, query, params=None):
+        result = self._cursor.execute(query, params)
+        if self._cursor.description:
+            self._columns = [col[0] for col in self._cursor.description]
+        return result
+
+    def fetchone(self):
+        row = self._cursor.fetchone()
+        if row is None or self._columns is None:
+            return None
+        return dict(zip(self._columns, row))
+
+    def fetchall(self):
+        rows = self._cursor.fetchall()
+        if not rows or self._columns is None:
+            return []
+        return [dict(zip(self._columns, row)) for row in rows]
+
+    @property
+    def rowcount(self):
+        return self._cursor.rowcount
 
 
 class ConnectionPool:
@@ -30,16 +60,15 @@ class ConnectionPool:
 
     def _create_connection(self):
         """Create a new MySQL connection."""
-        return MySQLdb.connect(
+        return mysql.connector.connect(
             host=self.cfg.host,
             port=self.cfg.port,
             user=self.cfg.user,
-            passwd=self.cfg.password,
-            db=self.cfg.name,
+            password=self.cfg.password,
+            database=self.cfg.name,
             charset="utf8mb4",
             use_unicode=True,
-            cursorclass=MySQLdb.cursors.DictCursor,
-            autocommit=False,  # We'll manage transactions explicitly
+            autocommit=False,
         )
 
     @contextmanager
@@ -49,13 +78,13 @@ class ConnectionPool:
         try:
             conn = self._pool.get_nowait()
             # Test if connection is still alive
-            conn.ping(True)
+            conn.ping(reconnect=True)
         except Empty:
             with self._lock:
                 if self._size < self.cfg.pool_size:
                     conn = self._create_connection()
                     self._size += 1
-        except MySQLdb.OperationalError:
+        except MySQLError:
             # Connection died, create new one
             conn = self._create_connection()
 
@@ -63,8 +92,8 @@ class ConnectionPool:
             # Pool exhausted, wait for one
             conn = self._pool.get(timeout=30)
             try:
-                conn.ping(True)
-            except MySQLdb.OperationalError:
+                conn.ping(reconnect=True)
+            except MySQLError:
                 conn = self._create_connection()
 
         try:
@@ -108,6 +137,10 @@ class MySQLDB:
         self.cfg = cfg
         self._pool = get_pool(cfg)
 
+    def _cursor(self, conn) -> DictCursor:
+        """Create a DictCursor wrapper for the connection."""
+        return DictCursor(conn.cursor())
+
     # =========================================================================
     # RUN OPERATIONS
     # =========================================================================
@@ -123,7 +156,7 @@ class MySQLDB:
         """Create a new orchestration run."""
         t = now_utc()
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             cur.execute(
                 """INSERT INTO runs(run_id, created_at, updated_at, status, task, mode,
                    total_steps, completed_steps, constraints_json)
@@ -137,7 +170,7 @@ class MySQLDB:
     def get_run(self, run_id: str) -> Optional[Dict[str, Any]]:
         """Get run by ID."""
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             cur.execute("SELECT * FROM runs WHERE run_id=%s", (run_id,))
             return cur.fetchone()
 
@@ -149,7 +182,7 @@ class MySQLDB:
     ) -> List[Dict[str, Any]]:
         """List runs with optional filtering."""
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             if status:
                 cur.execute(
                     """SELECT * FROM runs WHERE status=%s
@@ -172,7 +205,7 @@ class MySQLDB:
         """Update run status."""
         t = now_utc()
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             if status in ("done", "failed"):
                 cur.execute(
                     """UPDATE runs SET status=%s, updated_at=%s, completed_at=%s,
@@ -190,13 +223,13 @@ class MySQLDB:
     def touch_run(self, run_id: str) -> None:
         """Update run timestamp."""
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             cur.execute("UPDATE runs SET updated_at=%s WHERE run_id=%s", (now_utc(), run_id))
 
     def increment_completed_steps(self, run_id: str) -> None:
         """Increment completed steps counter."""
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             cur.execute(
                 "UPDATE runs SET completed_steps = completed_steps + 1, updated_at=%s WHERE run_id=%s",
                 (now_utc(), run_id),
@@ -234,7 +267,7 @@ class MySQLDB:
         t = now_utc()
         deps_json = json.dumps(dependencies) if dependencies else None
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             cur.execute(
                 """INSERT INTO steps(run_id, step_id, agent, goal, contract_json, status,
                    retry_count, max_retries, timeout_seconds, dependencies, parallel_group,
@@ -249,7 +282,7 @@ class MySQLDB:
     def get_step(self, run_id: str, step_id: int) -> Optional[Dict[str, Any]]:
         """Get step by run_id and step_id."""
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             cur.execute(
                 "SELECT * FROM steps WHERE run_id=%s AND step_id=%s",
                 (run_id, step_id),
@@ -259,7 +292,7 @@ class MySQLDB:
     def list_steps(self, run_id: str) -> List[Dict[str, Any]]:
         """List all steps for a run."""
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             cur.execute(
                 "SELECT * FROM steps WHERE run_id=%s ORDER BY step_id",
                 (run_id,),
@@ -270,7 +303,7 @@ class MySQLDB:
         """Mark step as started."""
         t = now_utc()
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             cur.execute(
                 "UPDATE steps SET started_at=%s, updated_at=%s WHERE run_id=%s AND step_id=%s",
                 (t, t, run_id, step_id),
@@ -288,7 +321,7 @@ class MySQLDB:
         """Update step status and output."""
         t = now_utc()
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             if status == "accepted":
                 cur.execute(
                     """UPDATE steps SET status=%s, output_json=%s, updated_at=%s,
@@ -312,7 +345,7 @@ class MySQLDB:
     def get_step_retry_count(self, run_id: str, step_id: int) -> int:
         """Get current retry count for a step."""
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             cur.execute(
                 "SELECT retry_count, max_retries FROM steps WHERE run_id=%s AND step_id=%s",
                 (run_id, step_id),
@@ -323,7 +356,7 @@ class MySQLDB:
     def can_retry_step(self, run_id: str, step_id: int) -> bool:
         """Check if step can be retried."""
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             cur.execute(
                 "SELECT retry_count, max_retries FROM steps WHERE run_id=%s AND step_id=%s",
                 (run_id, step_id),
@@ -336,7 +369,7 @@ class MySQLDB:
     def all_steps_accepted(self, run_id: str) -> bool:
         """Check if all steps are accepted."""
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             cur.execute(
                 """SELECT COUNT(*) total,
                           SUM(CASE WHEN status='accepted' THEN 1 ELSE 0 END) acc
@@ -364,7 +397,7 @@ class MySQLDB:
     ) -> None:
         """Insert or update artifact metadata."""
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             cur.execute(
                 """INSERT INTO artifacts(run_id, step_id, name, path, content_type,
                    size_bytes, sha256, created_at)
@@ -382,7 +415,7 @@ class MySQLDB:
     def list_artifacts(self, run_id: str, step_id: Optional[int] = None) -> List[Dict[str, Any]]:
         """List artifacts for a run or step."""
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             if step_id is not None:
                 cur.execute(
                     "SELECT * FROM artifacts WHERE run_id=%s AND step_id=%s ORDER BY name",
@@ -402,7 +435,7 @@ class MySQLDB:
     def get_active_guidelines(self, category: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get active guidelines, optionally filtered by category."""
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             if category:
                 cur.execute(
                     """SELECT * FROM guidelines WHERE is_active=TRUE AND category=%s
@@ -427,7 +460,7 @@ class MySQLDB:
         """Insert or update a guideline."""
         t = now_utc()
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             cur.execute(
                 """INSERT INTO guidelines(guideline_id, category, priority, name,
                    description, condition_json, is_active, created_at, updated_at)
@@ -450,7 +483,7 @@ class MySQLDB:
     def get_agent_config(self, agent_name: str) -> Optional[Dict[str, Any]]:
         """Get agent configuration."""
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             cur.execute(
                 "SELECT * FROM agent_configs WHERE agent_name=%s AND is_active=TRUE",
                 (agent_name,),
@@ -460,7 +493,7 @@ class MySQLDB:
     def list_agent_configs(self) -> List[Dict[str, Any]]:
         """List all active agent configurations."""
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             cur.execute(
                 "SELECT * FROM agent_configs WHERE is_active=TRUE ORDER BY agent_name"
             )
@@ -473,7 +506,7 @@ class MySQLDB:
     def get_active_policies(self, policy_type: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get active policies, optionally filtered by type."""
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             if policy_type:
                 cur.execute(
                     "SELECT * FROM policies WHERE is_active=TRUE AND policy_type=%s",
@@ -515,7 +548,7 @@ class MySQLDB:
     ) -> List[Dict[str, Any]]:
         """List events with optional filtering."""
         with self._pool.connection() as conn:
-            cur = conn.cursor()
+            cur = self._cursor(conn)
             if run_id and event_type:
                 cur.execute(
                     """SELECT * FROM events WHERE run_id=%s AND event_type=%s

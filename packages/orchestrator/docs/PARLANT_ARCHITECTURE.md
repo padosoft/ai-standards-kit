@@ -712,13 +712,86 @@ REST API endpoints:
 |----------|--------|-------------|
 | `/health` | GET | Health check |
 | `/metrics` | GET | Prometheus metrics |
-| `/api/stats` | GET | Overall statistics |
+| `/api/stats` | GET | Detailed stats with trends |
+| `/api/stats/timeseries` | GET | Time series for charts |
+| `/api/health` | GET | System health (CPU, memory, services) |
 | `/api/runs` | GET | Paginated runs list |
 | `/api/runs/{id}` | GET | Run details with steps |
+| `/api/runs/{id}/cancel` | POST | Cancel active run |
+| `/api/runs/{id}/retry` | POST | Retry failed run |
 | `/api/events` | GET | Event list |
 | `/api/events/stream` | GET | SSE real-time events |
 | `/api/guidelines` | GET | Active guidelines |
+| `/api/webhooks` | GET/POST | List/create webhooks |
+| `/api/webhooks/{id}` | PUT/DELETE | Update/delete webhook |
+| `/api/webhooks/{id}/test` | POST | Test webhook |
+| `/api/alerts` | GET | List alerts |
+| `/api/alerts/{id}/acknowledge` | POST | Acknowledge alert |
+| `/api/settings` | GET/PUT | Dashboard settings |
+| `/api/discord/test` | POST | Test Discord notification |
 | `/mcp/invoke` | POST | MCP tool invocation |
+
+### 6. Discord Integration
+
+Real-time notifications via Discord webhooks:
+
+```python
+from ai_orchestrator import DiscordNotifier
+
+# Initialize from settings
+notifier = DiscordNotifier.from_settings()
+
+# Send alert
+await notifier.send_alert(
+    title="Run Failed",
+    message="Run xyz failed with error",
+    severity="critical",
+    run_id="run-123"
+)
+
+# Weekly summary (scheduled automatically)
+await notifier.send_weekly_summary()
+```
+
+Features:
+- **Alerts channel** - Critical failures, warnings
+- **Summary channel** - Weekly reports (separate)
+- **Rich embeds** - Color-coded by severity
+- **Configurable** - Enable/disable per event type
+
+### 7. Enterprise Dashboard (React)
+
+Full-featured React dashboard at `packages/dashboard/`:
+
+```bash
+cd packages/dashboard
+npm install
+npm run dev  # http://localhost:5173
+```
+
+**Pages:**
+| Page | Features |
+|------|----------|
+| Overview | KPI cards, runs chart, active runs, events |
+| Runs | List, filter, paginate, cancel, retry |
+| Run Detail | Steps, artifacts, progress, error display |
+| Metrics | Area/pie/bar charts, tool usage |
+| Alerts | Severity filter, acknowledge, delete |
+| Events | Audit log, date grouping |
+| Live | Real-time SSE feed, pause/resume |
+| Guidelines | CRUD, enable/disable toggle |
+| Webhooks | CRUD, test functionality |
+| Health | CPU, memory, disk, DB, queue |
+| Settings | Theme, retention, Discord, thresholds |
+
+**Tech Stack:**
+- React 18 + TypeScript
+- Vite (build)
+- Tailwind CSS + shadcn/ui patterns
+- Zustand (state)
+- TanStack Query (data fetching)
+- Recharts (visualizations)
+- React Router (navigation)
 
 ### Installation
 
@@ -886,6 +959,7 @@ This approach is essential for enterprise AI systems where reliability, security
 
 ---
 
-*Document Version: 2.0.0*
+*Document Version: 2.1.0*
 *Last Updated: January 2025*
 *Orchestrator Version: 0.4.0 (Enterprise Features)*
+*Dashboard Version: 0.1.0 (React Enterprise Dashboard)*

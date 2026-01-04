@@ -66,7 +66,7 @@ from .webhooks import (
     WebhookEvent,
     WebhookDispatcher,
     dispatch_webhook,
-    get_dispatcher,
+    get_webhook_dispatcher,
 )
 from .metrics import (
     MetricsCollector,
@@ -83,8 +83,15 @@ from .locking import (
     with_step_lock,
     with_run_lock,
 )
-from .http_server import create_app as create_http_app
-from .server import run_server
+# HTTP Server - lazy import to avoid circular dependency
+def create_http_app():
+    from .http_server import create_app
+    return create_app()
+
+# MCP Server - lazy import to avoid fastmcp dependency at load time
+def run_server(*args, **kwargs):
+    from .server import run_server as _run_server
+    return _run_server(*args, **kwargs)
 
 __all__ = [
     # Config
@@ -130,7 +137,7 @@ __all__ = [
     "WebhookEvent",
     "WebhookDispatcher",
     "dispatch_webhook",
-    "get_dispatcher",
+    "get_webhook_dispatcher",
     # Metrics
     "MetricsCollector",
     "get_metrics",

@@ -37,10 +37,19 @@ ai-enterprise/
 │   │   ├── config/                 # Settings, quality gates
 │   │   └── index.js                # API for loading standards
 │   │
-│   └── orchestrator/               # Python Parlant orchestrator
-│       ├── src/ai_orchestrator/    # Python source
-│       ├── migrations/             # MySQL schemas
-│       └── pyproject.toml          # Python package config
+│   ├── orchestrator/               # Python Parlant orchestrator
+│   │   ├── src/ai_orchestrator/    # Python source
+│   │   ├── migrations/             # MySQL schemas
+│   │   └── pyproject.toml          # Python package config
+│   │
+│   └── dashboard/                  # React Enterprise Dashboard
+│       ├── src/
+│       │   ├── pages/              # 11 dashboard pages
+│       │   ├── components/         # UI components (shadcn/ui style)
+│       │   ├── stores/             # Zustand state management
+│       │   └── api/                # API client
+│       ├── package.json            # React + Vite + Tailwind
+│       └── vite.config.ts          # Vite configuration
 ```
 
 ---
@@ -269,16 +278,55 @@ python -m ai_orchestrator.server --transport http --port 8080 --metrics-port 909
 
 ### REST API Endpoints (Dashboard)
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /health` | Health check |
-| `GET /metrics` | Prometheus metrics |
-| `GET /api/stats` | Overall statistics |
-| `GET /api/runs` | Paginated runs list |
-| `GET /api/runs/{id}` | Run details with steps |
-| `GET /api/events` | Event list |
-| `GET /api/events/stream` | SSE real-time events |
-| `POST /mcp/invoke` | MCP tool invocation via HTTP |
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+| `/metrics` | GET | Prometheus metrics |
+| `/api/stats` | GET | Detailed statistics with trends |
+| `/api/stats/timeseries` | GET | Time series data for charts |
+| `/api/health` | GET | Detailed system health (CPU, memory, services) |
+| `/api/runs` | GET | Paginated runs list |
+| `/api/runs/{id}` | GET | Run details with steps |
+| `/api/runs/{id}/cancel` | POST | Cancel active run |
+| `/api/runs/{id}/retry` | POST | Retry failed run |
+| `/api/events` | GET | Event list |
+| `/api/events/stream` | GET | SSE real-time events |
+| `/api/webhooks` | GET/POST | List/create webhooks |
+| `/api/webhooks/{id}` | PUT/DELETE | Update/delete webhook |
+| `/api/webhooks/{id}/test` | POST | Test webhook |
+| `/api/alerts` | GET | List alerts |
+| `/api/alerts/{id}/acknowledge` | POST | Acknowledge alert |
+| `/api/settings` | GET/PUT | Dashboard settings |
+| `/api/discord/test` | POST | Test Discord notification |
+| `/mcp/invoke` | POST | MCP tool invocation via HTTP |
+
+### Enterprise Dashboard (React)
+
+The monorepo includes a full-featured React dashboard in `packages/dashboard/`:
+
+```bash
+# Install and run dashboard
+cd packages/dashboard
+npm install
+npm run dev
+```
+
+**Dashboard Features:**
+- **Overview** - KPI cards, runs chart, active runs, recent events
+- **Runs Management** - List, filter, cancel, retry runs with detailed view
+- **Metrics** - Charts (area, pie, bar), tool usage, performance stats
+- **Alerts** - System alerts with severity levels and acknowledgment
+- **Events** - Audit log with date grouping and filtering
+- **Live Feed** - Real-time SSE event stream with pause/resume
+- **Guidelines** - CRUD for behavioral guidelines with enable/disable
+- **Webhooks** - CRUD for webhooks with test functionality
+- **System Health** - CPU, memory, disk, database, queue stats
+- **Settings** - Theme, retention, Discord integration, alert thresholds
+
+**Discord Integration:**
+- Critical alerts to designated channel
+- Weekly summary reports (separate channel)
+- Configurable notification triggers
 
 ### Python API
 

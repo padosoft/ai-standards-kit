@@ -15,13 +15,14 @@ import {
   CheckCircle,
   TestTube,
   Send,
+  Lightbulb,
 } from 'lucide-react'
 import { api } from '@/api/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { useThemeStore, useSettingsStore } from '@/stores/app'
+import { useThemeStore, useSettingsStore, useEnergySaverStore } from '@/stores/app'
 import { cn } from '@/utils/cn'
 import type { DashboardSettings } from '@/types'
 
@@ -31,6 +32,7 @@ export function SettingsPage() {
   const queryClient = useQueryClient()
   const { theme, setTheme } = useThemeStore()
   const { sidebarCollapsed, setSidebarCollapsed } = useSettingsStore()
+  const { enabled: energySaverEnabled, setEnabled: setEnergySaverEnabled, idleTimeoutSeconds, setIdleTimeout } = useEnergySaverStore()
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ['settings'],
@@ -149,6 +151,56 @@ export function SettingsPage() {
                   />
                 </button>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Energy Saver */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lightbulb className="h-5 w-5" />
+                Energy Saver
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">Enable Energy Saver</div>
+                  <div className="text-sm text-muted-foreground">
+                    Show a dark screen after inactivity to reduce monitor energy consumption (Fineco style)
+                  </div>
+                </div>
+                <button
+                  onClick={() => setEnergySaverEnabled(!energySaverEnabled)}
+                  className={cn(
+                    'w-12 h-6 rounded-full transition-colors',
+                    energySaverEnabled ? 'bg-primary' : 'bg-muted'
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'w-5 h-5 rounded-full bg-white transition-transform',
+                      energySaverEnabled ? 'translate-x-6' : 'translate-x-0.5'
+                    )}
+                  />
+                </button>
+              </div>
+              {energySaverEnabled && (
+                <div>
+                  <label className="text-sm font-medium">Idle Timeout (seconds)</label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Time of inactivity before energy saver activates
+                  </p>
+                  <Input
+                    type="number"
+                    min={30}
+                    max={600}
+                    value={idleTimeoutSeconds}
+                    onChange={(e) => setIdleTimeout(Number(e.target.value))}
+                    className="w-32"
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
 

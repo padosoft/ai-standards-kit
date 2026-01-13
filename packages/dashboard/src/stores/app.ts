@@ -183,3 +183,29 @@ export const useUIStore = create<UIState>()(
     }
   )
 )
+
+// =============================================================================
+// Energy Saver Store
+// =============================================================================
+
+interface EnergySaverState {
+  enabled: boolean
+  idleTimeoutSeconds: number
+  setEnabled: (enabled: boolean) => void
+  setIdleTimeout: (seconds: number) => void
+}
+
+export const useEnergySaverStore = create<EnergySaverState>()(
+  persist(
+    (set) => ({
+      enabled: true,
+      idleTimeoutSeconds: 120,
+      setEnabled: (enabled) => set({ enabled }),
+      setIdleTimeout: (idleTimeoutSeconds) => set({ idleTimeoutSeconds }),
+    }),
+    {
+      name: 'ai-dashboard-energy-saver',
+      storage: createJSONStorage(() => localStorage),
+    }
+  )
+)

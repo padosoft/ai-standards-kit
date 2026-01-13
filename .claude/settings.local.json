@@ -19,7 +19,10 @@
       "Read(/C:\\xampp\\htdocs\\mysqlbackup.sh/**)",
       "Read(/C:\\xampp\\htdocs\\mysqlbackup.sh/**)",
       "Bash(node:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npm run build:*)",
+      "Bash(timeout 15 npm run dev:*)",
+      "Bash(npm run dev:*)"
     ],
     "deny": [],
     "ask": []

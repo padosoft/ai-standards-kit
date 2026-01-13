@@ -11,24 +11,31 @@ import { GuidelinesPage } from '@/pages/GuidelinesPage'
 import { WebhooksPage } from '@/pages/WebhooksPage'
 import { HealthPage } from '@/pages/HealthPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { EnergySaver } from '@/components/EnergySaver'
+import { useEnergySaverStore } from '@/stores/app'
 
 export default function App() {
+  const { idleTimeoutSeconds } = useEnergySaverStore()
+
   return (
-    <Layout>
-      <Routes>
-        <Route path="/" element={<Navigate to="/overview" replace />} />
-        <Route path="/overview" element={<OverviewPage />} />
-        <Route path="/runs" element={<RunsPage />} />
-        <Route path="/runs/:runId" element={<RunDetailPage />} />
-        <Route path="/metrics" element={<MetricsPage />} />
-        <Route path="/alerts" element={<AlertsPage />} />
-        <Route path="/events" element={<EventsPage />} />
-        <Route path="/live" element={<LivePage />} />
-        <Route path="/guidelines" element={<GuidelinesPage />} />
-        <Route path="/webhooks" element={<WebhooksPage />} />
-        <Route path="/health" element={<HealthPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-      </Routes>
-    </Layout>
+    <>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<Navigate to="/overview" replace />} />
+          <Route path="/overview" element={<OverviewPage />} />
+          <Route path="/runs" element={<RunsPage />} />
+          <Route path="/runs/:runId" element={<RunDetailPage />} />
+          <Route path="/metrics" element={<MetricsPage />} />
+          <Route path="/alerts" element={<AlertsPage />} />
+          <Route path="/events" element={<EventsPage />} />
+          <Route path="/live" element={<LivePage />} />
+          <Route path="/guidelines" element={<GuidelinesPage />} />
+          <Route path="/webhooks" element={<WebhooksPage />} />
+          <Route path="/health" element={<HealthPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Routes>
+      </Layout>
+      <EnergySaver idleTimeout={idleTimeoutSeconds * 1000} />
+    </>
   )
 }

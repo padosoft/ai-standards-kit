@@ -120,6 +120,17 @@ This installs all packages for the CLI and Dashboard. Wait for it to complete (m
 
 ### Step 3: Start MySQL Database
 
+> **Note on Migrations**: The project includes 7 migration files that must be applied in order:
+> - `mysql_001_init.sql` - Base schema (runs, steps)
+> - `mysql_002_enterprise.sql` - Enterprise features (guidelines, policies, webhooks, parallel execution)
+> - `mysql_003_dashboard.sql` - Dashboard-specific tables (alerts, settings)
+> - `mysql_004_test_data.sql` - Test data for development
+> - `mysql_005_guidelines_source.sql` - Guidelines source tracking
+> - `mysql_006_guideline_id_expand.sql` - Extended guideline IDs
+> - `mysql_007_guideline_tags.sql` - Tag system for guidelines
+>
+> **⚠️ Note**: The file `mysql_002_parallel_steps.sql` is obsolete and should NOT be applied. It conflicts with `mysql_002_enterprise.sql` which includes all parallel execution features.
+
 **Option A: Using Docker (Recommended)**
 ```bash
 docker run --name ai-orch-mysql \
@@ -130,9 +141,21 @@ docker run --name ai-orch-mysql \
   -p 3306:3306 \
   -d mysql:8.0
 
-# Wait 30 seconds for MySQL to initialize, then apply migrations:
+# Wait 30 seconds for MySQL to initialize, then apply all migrations in order:
 docker exec -i ai-orch-mysql mysql -uai_orch -psuper-secret ai_orch \
   < packages/orchestrator/migrations/mysql_001_init.sql
+docker exec -i ai-orch-mysql mysql -uai_orch -psuper-secret ai_orch \
+  < packages/orchestrator/migrations/mysql_002_enterprise.sql
+docker exec -i ai-orch-mysql mysql -uai_orch -psuper-secret ai_orch \
+  < packages/orchestrator/migrations/mysql_003_dashboard.sql
+docker exec -i ai-orch-mysql mysql -uai_orch -psuper-secret ai_orch \
+  < packages/orchestrator/migrations/mysql_004_test_data.sql
+docker exec -i ai-orch-mysql mysql -uai_orch -psuper-secret ai_orch \
+  < packages/orchestrator/migrations/mysql_005_guidelines_source.sql
+docker exec -i ai-orch-mysql mysql -uai_orch -psuper-secret ai_orch \
+  < packages/orchestrator/migrations/mysql_006_guideline_id_expand.sql
+docker exec -i ai-orch-mysql mysql -uai_orch -psuper-secret ai_orch \
+  < packages/orchestrator/migrations/mysql_007_guideline_tags.sql
 ```
 
 **Option B: Using Local MySQL**
@@ -147,8 +170,14 @@ GRANT ALL PRIVILEGES ON ai_orch.* TO 'ai_orch'@'localhost';
 FLUSH PRIVILEGES;
 EXIT;
 
-# Apply migrations
+# Apply all migrations in order
 mysql -uai_orch -psuper-secret ai_orch < packages/orchestrator/migrations/mysql_001_init.sql
+mysql -uai_orch -psuper-secret ai_orch < packages/orchestrator/migrations/mysql_002_enterprise.sql
+mysql -uai_orch -psuper-secret ai_orch < packages/orchestrator/migrations/mysql_003_dashboard.sql
+mysql -uai_orch -psuper-secret ai_orch < packages/orchestrator/migrations/mysql_004_test_data.sql
+mysql -uai_orch -psuper-secret ai_orch < packages/orchestrator/migrations/mysql_005_guidelines_source.sql
+mysql -uai_orch -psuper-secret ai_orch < packages/orchestrator/migrations/mysql_006_guideline_id_expand.sql
+mysql -uai_orch -psuper-secret ai_orch < packages/orchestrator/migrations/mysql_007_guideline_tags.sql
 ```
 
 ### Step 4: Configure the Orchestrator
@@ -481,9 +510,21 @@ docker run --name ai-orch-mysql \
   -p 3306:3306 \
   -d mysql:8.0
 
-# 2. Apply migrations
+# 2. Apply all migrations in order
 docker exec -i ai-orch-mysql mysql -uai_orch -psuper-secret ai_orch \
   < packages/orchestrator/migrations/mysql_001_init.sql
+docker exec -i ai-orch-mysql mysql -uai_orch -psuper-secret ai_orch \
+  < packages/orchestrator/migrations/mysql_002_enterprise.sql
+docker exec -i ai-orch-mysql mysql -uai_orch -psuper-secret ai_orch \
+  < packages/orchestrator/migrations/mysql_003_dashboard.sql
+docker exec -i ai-orch-mysql mysql -uai_orch -psuper-secret ai_orch \
+  < packages/orchestrator/migrations/mysql_004_test_data.sql
+docker exec -i ai-orch-mysql mysql -uai_orch -psuper-secret ai_orch \
+  < packages/orchestrator/migrations/mysql_005_guidelines_source.sql
+docker exec -i ai-orch-mysql mysql -uai_orch -psuper-secret ai_orch \
+  < packages/orchestrator/migrations/mysql_006_guideline_id_expand.sql
+docker exec -i ai-orch-mysql mysql -uai_orch -psuper-secret ai_orch \
+  < packages/orchestrator/migrations/mysql_007_guideline_tags.sql
 
 # 3. Install Python package
 cd packages/orchestrator
